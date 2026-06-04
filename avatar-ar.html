@@ -94,6 +94,25 @@
     text-transform: uppercase;
   }
 
+  #avatar-switcher {
+    display: flex;
+    gap: 4px;
+  }
+  .av-btn {
+    background: none;
+    border: 1px solid rgba(255,255,255,0.25);
+    color: rgba(255,255,255,0.45);
+    font-family: 'Georgia', serif;
+    font-size: 11px;
+    width: 28px;
+    height: 28px;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .av-btn:hover { border-color: rgba(255,255,255,0.55); color: rgba(255,255,255,0.75); }
+  .av-btn.active { background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.7); color: white; }
+
   #opacity-control {
     display: flex;
     align-items: center;
@@ -181,6 +200,12 @@
 
   <div id="top-bar">
     <div id="title">Avatar AR</div>
+    <div id="avatar-switcher">
+      <button class="av-btn active" data-av="0">I</button>
+      <button class="av-btn" data-av="1">II</button>
+      <button class="av-btn" data-av="2">III</button>
+      <button class="av-btn" data-av="3">IV</button>
+    </div>
     <div style="display:flex;align-items:center;gap:16px;">
       <button id="camera-toggle" style="background:none;border:1px solid rgba(255,255,255,0.4);color:rgba(255,255,255,0.7);font-family:Georgia,serif;font-size:10px;letter-spacing:0.12em;padding:6px 14px;border-radius:2px;cursor:pointer;text-transform:uppercase;">camera</button>
       <div id="opacity-control">
@@ -207,6 +232,14 @@ const statusEl = document.getElementById('status');
 const startBtn = document.getElementById('start-btn');
 const loadingEl = document.getElementById('loading');
 const opacitySlider = document.getElementById('opacity-slider');
+
+const AVATARS = [
+  { id:'default',      label:'I',   headScale:1.0,  torsoRxScale:1.0,  torsoRyScale:1.0,  armScale:1.0,  legScale:1.0,  wobble:0.18, headWobble:0.10, asymL:1.0,  asymR:1.0  },
+  { id:'long-limbed',  label:'II',  headScale:0.80, torsoRxScale:0.85, torsoRyScale:0.90, armScale:0.70, legScale:0.75, wobble:0.12, headWobble:0.08, asymL:1.0,  asymR:1.0  },
+  { id:'top-heavy',    label:'III', headScale:1.55, torsoRxScale:1.20, torsoRyScale:0.95, armScale:1.10, legScale:0.80, wobble:0.14, headWobble:0.18, asymL:1.0,  asymR:1.0  },
+  { id:'asymmetrical', label:'IV',  headScale:1.0,  torsoRxScale:1.05, torsoRyScale:1.0,  armScale:1.0,  legScale:1.0,  wobble:0.18, headWobble:0.10, asymL:1.35, asymR:0.72 },
+];
+let currentAvatar = 0;
 
 let avatarOpacity = 0.75;
 let poseResults = null;
@@ -309,14 +342,17 @@ function drawAvatar(landmarks) {
   const torsoH = Math.abs(torsoBot.y - torsoTop.y);
 
   // scale-relative radii
+  const cfg = AVATARS[currentAvatar];
   const scale = shoulderW;
-  const headR = scale * 0.42;
-  const torsoRx = scale * 0.52;
-  const torsoRy = torsoH * 0.55;
-  const armR1 = scale * 0.18;
-  const armR2 = scale * 0.13;
-  const legR1 = scale * 0.22;
-  const legR2 = scale * 0.16;
+  const headR   = scale * 0.42 * cfg.headScale;
+  const torsoRx = scale * 0.52 * cfg.torsoRxScale;
+  const torsoRy = torsoH * 0.55 * cfg.torsoRyScale;
+  const armR1   = scale * 0.18 * cfg.armScale;
+  const armR2   = scale * 0.13 * cfg.armScale;
+  const legR1   = scale * 0.22 * cfg.legScale;
+  const legR2   = scale * 0.16 * cfg.legScale;
+  const aL = cfg.asymL;
+  const aR = cfg.asymR;
 
   ctx.save();
   ctx.globalAlpha = avatarOpacity;
@@ -332,38 +368,38 @@ function drawAvatar(landmarks) {
 
   // ── legs ──
   ctx.fillStyle = fill;
-  organicLimb(ctx, lHip.x, lHip.y, lKne.x, lKne.y, legR1, legR1 * 0.9);
+  organicLimb(ctx, lHip.x, lHip.y, lKne.x, lKne.y, legR1 * aL, legR1 * 0.9 * aL);
   ctx.fill(); ctx.stroke();
-  organicLimb(ctx, lKne.x, lKne.y, lAnk.x, lAnk.y, legR1 * 0.85, legR2);
+  organicLimb(ctx, lKne.x, lKne.y, lAnk.x, lAnk.y, legR1 * 0.85 * aL, legR2 * aL);
   ctx.fill(); ctx.stroke();
 
-  organicLimb(ctx, rHip.x, rHip.y, rKne.x, rKne.y, legR1, legR1 * 0.9);
+  organicLimb(ctx, rHip.x, rHip.y, rKne.x, rKne.y, legR1 * aR, legR1 * 0.9 * aR);
   ctx.fill(); ctx.stroke();
-  organicLimb(ctx, rKne.x, rKne.y, rAnk.x, rAnk.y, legR1 * 0.85, legR2);
+  organicLimb(ctx, rKne.x, rKne.y, rAnk.x, rAnk.y, legR1 * 0.85 * aR, legR2 * aR);
   ctx.fill(); ctx.stroke();
 
   // ── torso blob ──
   const tCx = (torsoTop.x + torsoBot.x) / 2;
   const tCy = (torsoTop.y + torsoBot.y) / 2;
-  blobPath(ctx, tCx, tCy, torsoRx, torsoRy, 10, 0.08);
+  blobPath(ctx, tCx, tCy, torsoRx, torsoRy, 10, cfg.wobble);
   ctx.fillStyle = fill;
   ctx.fill();
   ctx.stroke();
 
   // ── arms ──
-  organicLimb(ctx, lSho.x, lSho.y, lElb.x, lElb.y, armR1, armR1 * 0.9);
+  organicLimb(ctx, lSho.x, lSho.y, lElb.x, lElb.y, armR1 * aL, armR1 * 0.9 * aL);
   ctx.fill(); ctx.stroke();
-  organicLimb(ctx, lElb.x, lElb.y, lWri.x, lWri.y, armR1 * 0.85, armR2);
+  organicLimb(ctx, lElb.x, lElb.y, lWri.x, lWri.y, armR1 * 0.85 * aL, armR2 * aL);
   ctx.fill(); ctx.stroke();
 
-  organicLimb(ctx, rSho.x, rSho.y, rElb.x, rElb.y, armR1, armR1 * 0.9);
+  organicLimb(ctx, rSho.x, rSho.y, rElb.x, rElb.y, armR1 * aR, armR1 * 0.9 * aR);
   ctx.fill(); ctx.stroke();
-  organicLimb(ctx, rElb.x, rElb.y, rWri.x, rWri.y, armR1 * 0.85, armR2);
+  organicLimb(ctx, rElb.x, rElb.y, rWri.x, rWri.y, armR1 * 0.85 * aR, armR2 * aR);
   ctx.fill(); ctx.stroke();
 
   // ── head blob ──
   const hCy = nose.y - headR * 0.1;
-  blobPath(ctx, nose.x, hCy, headR, headR * 1.15, 9, 0.1);
+  blobPath(ctx, nose.x, hCy, headR, headR * 1.15, 9, cfg.headWobble);
   ctx.fillStyle = fill;
   ctx.fill();
   ctx.stroke();
@@ -434,6 +470,15 @@ startBtn.addEventListener('click', async () => {
     startBtn.disabled = false;
     console.error(err);
   }
+});
+
+// ── avatar switcher ──
+document.querySelectorAll('.av-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    currentAvatar = parseInt(btn.dataset.av);
+    document.querySelectorAll('.av-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  });
 });
 
 // ── hide loading once scripts ready ──

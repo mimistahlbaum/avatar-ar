@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Avatar AR</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a0a0a;
+    font-family: 'Georgia', serif;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  #container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+  }
+
+  #video {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1);
+  }
+
+  #canvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
+    transform: scaleX(-1);
+  }
+
+  #ui {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    z-index: 10;
+    background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 100%);
+  }
+
+  #status {
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    color: rgba(255,255,255,0.5);
+    text-transform: uppercase;
+  }
+
+  #start-btn {
+    background: none;
+    border: 1px solid rgba(255,255,255,0.6);
+    color: white;
+    font-family: 'Georgia', serif;
+    font-size: 14px;
+    letter-spacing: 0.1em;
+    padding: 12px 32px;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.3s;
+  }
+  #start-btn:hover { background: rgba(255,255,255,0.1); }
+  #start-btn:active { background: rgba(255,255,255,0.2); }
+
+  #top-bar {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    padding: 20px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, transparent 100%);
+  }
+
+  #title {
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    color: rgba(255,255,255,0.6);
+    text-transform: uppercase;
+  }
+
+  #opacity-control {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  #opacity-label {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: rgba(255,255,255,0.4);
+    text-transform: uppercase;
+  }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 80px;
+    height: 2px;
+    background: rgba(255,255,255,0.3);
+    border-radius: 1px;
+    outline: none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px;
+    height: 12px;
+    background: white;
+    border-radius: 50%;
+    cursor: pointer;
+  }
+
+  #loading {
+    position: absolute;
+    inset: 0;
+    background: #0a0a0a;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    z-index: 20;
+  }
+
+  #loading-title {
+    font-size: 13px;
+    letter-spacing: 0.25em;
+    color: rgba(255,255,255,0.8);
+    text-transform: uppercase;
+  }
+
+  #loading-sub {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: rgba(255,255,255,0.3);
+  }
+
+  .dot-anim {
+    display: flex; gap: 6px;
+  }
+  .dot-anim span {
+    width: 5px; height: 5px;
+    background: rgba(255,255,255,0.4);
+    border-radius: 50%;
+    animation: pulse 1.2s ease-in-out infinite;
+  }
+  .dot-anim span:nth-child(2) { animation-delay: 0.2s; }
+  .dot-anim span:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 0.3; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.2); }
+  }
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div id="loading-title">Avatar AR</div>
+  <div class="dot-anim"><span></span><span></span><span></span></div>
+  <div id="loading-sub">loading pose detection</div>
+</div>
+
+<div id="container">
+  <video id="video" playsinline autoplay muted></video>
+  <canvas id="canvas"></canvas>
+
+  <div id="top-bar">
+    <div id="title">Avatar AR</div>
+    <div id="opacity-control">
+      <span id="opacity-label">opacity</span>
+      <input type="range" id="opacity-slider" min="10" max="100" value="75">
+    </div>
+  </div>
+
+  <div id="ui">
+    <div id="status">tap to start camera</div>
+    <button id="start-btn">Start</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/pose.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js" crossorigin="anonymous"></script>
+
+<script>
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const statusEl = document.getElementById('status');
+const startBtn = document.getElementById('start-btn');
+const loadingEl = document.getElementById('loading');
+const opacitySlider = document.getElementById('opacity-slider');
+
+let avatarOpacity = 0.75;
+let poseResults = null;
+let animFrame = 0;
+
+opacitySlider.addEventListener('input', () => {
+  avatarOpacity = opacitySlider.value / 100;
+});
+
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+// ── smooth landmark history ──
+const history = {};
+const SMOOTH = 0.35;
+
+function smooth(key, val) {
+  if (history[key] === undefined) history[key] = val;
+  history[key] = history[key] * (1 - SMOOTH) + val * SMOOTH;
+  return history[key];
+}
+
+function lm(landmarks, idx) {
+  const l = landmarks[idx];
+  const x = smooth(`${idx}x`, l.x * canvas.width);
+  const y = smooth(`${idx}y`, l.y * canvas.height);
+  return { x, y, vis: l.visibility };
+}
+
+// ── organic blob shape ──
+function blobPath(ctx, cx, cy, rx, ry, pts = 8, wobble = 0.18) {
+  const angleStep = (Math.PI * 2) / pts;
+  const noise = [];
+  for (let i = 0; i < pts; i++) {
+    noise.push(1 + (Math.sin(animFrame * 0.04 + i * 1.3) * wobble));
+  }
+  ctx.beginPath();
+  for (let i = 0; i <= pts; i++) {
+    const angle = i * angleStep - Math.PI / 2;
+    const n = noise[i % pts];
+    const x = cx + Math.cos(angle) * rx * n;
+    const y = cy + Math.sin(angle) * ry * n;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+}
+
+// ── draw organic limb (tapered capsule) ──
+function organicLimb(ctx, x1, y1, x2, y2, r1, r2) {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const len = Math.sqrt(dx * dx + dy * dy);
+  if (len < 1) return;
+
+  const nx = -dy / len;
+  const ny = dx / len;
+
+  // add gentle organic wobble to midpoint
+  const wobble = Math.sin(animFrame * 0.03) * 3;
+  const mx = (x1 + x2) / 2 + nx * wobble;
+  const my = (y1 + y2) / 2 + ny * wobble;
+
+  ctx.beginPath();
+  ctx.moveTo(x1 + nx * r1, y1 + ny * r1);
+  ctx.quadraticCurveTo(mx + nx * ((r1 + r2) / 2), my + ny * ((r1 + r2) / 2), x2 + nx * r2, y2 + ny * r2);
+  ctx.lineTo(x2 - nx * r2, y2 - ny * r2);
+  ctx.quadraticCurveTo(mx - nx * ((r1 + r2) / 2), my - ny * ((r1 + r2) / 2), x1 - nx * r1, y1 - ny * r1);
+  ctx.closePath();
+}
+
+// ── main avatar draw ──
+function drawAvatar(landmarks) {
+  const W = canvas.width;
+  const H = canvas.height;
+
+  // key points
+  const nose    = lm(landmarks, 0);
+  const lSho    = lm(landmarks, 11);
+  const rSho    = lm(landmarks, 12);
+  const lElb    = lm(landmarks, 13);
+  const rElb    = lm(landmarks, 14);
+  const lWri    = lm(landmarks, 15);
+  const rWri    = lm(landmarks, 16);
+  const lHip    = lm(landmarks, 23);
+  const rHip    = lm(landmarks, 24);
+  const lKne    = lm(landmarks, 25);
+  const rKne    = lm(landmarks, 26);
+  const lAnk    = lm(landmarks, 27);
+  const rAnk    = lm(landmarks, 28);
+
+  // derived
+  const torsoTop = { x: (lSho.x + rSho.x) / 2, y: (lSho.y + rSho.y) / 2 };
+  const torsoBot = { x: (lHip.x + rHip.x) / 2, y: (lHip.y + rHip.y) / 2 };
+  const shoulderW = Math.abs(rSho.x - lSho.x);
+  const torsoH = Math.abs(torsoBot.y - torsoTop.y);
+
+  // scale-relative radii
+  const scale = shoulderW;
+  const headR = scale * 0.42;
+  const torsoRx = scale * 0.52;
+  const torsoRy = torsoH * 0.55;
+  const armR1 = scale * 0.18;
+  const armR2 = scale * 0.13;
+  const legR1 = scale * 0.22;
+  const legR2 = scale * 0.16;
+
+  ctx.save();
+  ctx.globalAlpha = avatarOpacity;
+
+  const fill = 'rgba(230, 225, 215, 0.92)';
+  const stroke = 'rgba(20, 20, 20, 0.9)';
+  const lineW = Math.max(1, scale * 0.025);
+
+  ctx.strokeStyle = stroke;
+  ctx.lineWidth = lineW;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+
+  // ── legs ──
+  ctx.fillStyle = fill;
+  organicLimb(ctx, lHip.x, lHip.y, lKne.x, lKne.y, legR1, legR1 * 0.9);
+  ctx.fill(); ctx.stroke();
+  organicLimb(ctx, lKne.x, lKne.y, lAnk.x, lAnk.y, legR1 * 0.85, legR2);
+  ctx.fill(); ctx.stroke();
+
+  organicLimb(ctx, rHip.x, rHip.y, rKne.x, rKne.y, legR1, legR1 * 0.9);
+  ctx.fill(); ctx.stroke();
+  organicLimb(ctx, rKne.x, rKne.y, rAnk.x, rAnk.y, legR1 * 0.85, legR2);
+  ctx.fill(); ctx.stroke();
+
+  // ── torso blob ──
+  const tCx = (torsoTop.x + torsoBot.x) / 2;
+  const tCy = (torsoTop.y + torsoBot.y) / 2;
+  blobPath(ctx, tCx, tCy, torsoRx, torsoRy, 10, 0.08);
+  ctx.fillStyle = fill;
+  ctx.fill();
+  ctx.stroke();
+
+  // ── arms ──
+  organicLimb(ctx, lSho.x, lSho.y, lElb.x, lElb.y, armR1, armR1 * 0.9);
+  ctx.fill(); ctx.stroke();
+  organicLimb(ctx, lElb.x, lElb.y, lWri.x, lWri.y, armR1 * 0.85, armR2);
+  ctx.fill(); ctx.stroke();
+
+  organicLimb(ctx, rSho.x, rSho.y, rElb.x, rElb.y, armR1, armR1 * 0.9);
+  ctx.fill(); ctx.stroke();
+  organicLimb(ctx, rElb.x, rElb.y, rWri.x, rWri.y, armR1 * 0.85, armR2);
+  ctx.fill(); ctx.stroke();
+
+  // ── head blob ──
+  const hCy = nose.y - headR * 0.1;
+  blobPath(ctx, nose.x, hCy, headR, headR * 1.15, 9, 0.1);
+  ctx.fillStyle = fill;
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function render() {
+  animFrame++;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (poseResults && poseResults.poseLandmarks) {
+    drawAvatar(poseResults.poseLandmarks);
+  }
+  requestAnimationFrame(render);
+}
+render();
+
+// ── pose setup ──
+function initPose() {
+  const pose = new Pose({
+    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/${file}`
+  });
+
+  pose.setOptions({
+    modelComplexity: 1,
+    smoothLandmarks: true,
+    enableSegmentation: false,
+    minDetectionConfidence: 0.5,
+    minTrackingConfidence: 0.5
+  });
+
+  pose.onResults((results) => {
+    poseResults = results;
+  });
+
+  return pose;
+}
+
+// ── start camera ──
+startBtn.addEventListener('click', async () => {
+  startBtn.disabled = true;
+  statusEl.textContent = 'starting…';
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+      audio: false
+    });
+    video.srcObject = stream;
+    await video.play();
+
+    const pose = initPose();
+
+    const camera = new Camera(video, {
+      onFrame: async () => {
+        await pose.send({ image: video });
+      },
+      width: 640,
+      height: 480
+    });
+    await camera.start();
+
+    statusEl.textContent = 'move freely';
+    document.getElementById('ui').style.display = 'none';
+
+  } catch (err) {
+    statusEl.textContent = 'camera error — try reloading';
+    startBtn.disabled = false;
+    console.error(err);
+  }
+});
+
+// ── hide loading once scripts ready ──
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    loadingEl.style.opacity = '0';
+    loadingEl.style.transition = 'opacity 0.5s';
+    setTimeout(() => loadingEl.style.display = 'none', 500);
+  }, 800);
+});
+</script>
+</body>
+</html>

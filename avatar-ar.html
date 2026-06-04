@@ -201,14 +201,14 @@
   <div id="top-bar">
     <div id="title">Avatar AR</div>
     <div id="avatar-switcher">
-      <button class="av-btn active" data-av="0">I</button>
-      <button class="av-btn" data-av="1">II</button>
-      <button class="av-btn" data-av="2">III</button>
-      <button class="av-btn" data-av="3">IV</button>
+      <button type="button" class="av-btn active" data-av="0">I</button>
+      <button type="button" class="av-btn" data-av="1">II</button>
+      <button type="button" class="av-btn" data-av="2">III</button>
+      <button type="button" class="av-btn" data-av="3">IV</button>
     </div>
     <div style="display:flex;align-items:center;gap:16px;">
-      <button id="camera-toggle" style="background:none;border:1px solid rgba(255,255,255,0.4);color:rgba(255,255,255,0.7);font-family:Georgia,serif;font-size:10px;letter-spacing:0.12em;padding:6px 14px;border-radius:2px;cursor:pointer;text-transform:uppercase;">camera</button>
-      <button id="rec-btn" style="display:none;background:none;border:1px solid rgba(255,255,255,0.4);color:rgba(255,255,255,0.7);font-family:Georgia,serif;font-size:10px;letter-spacing:0.12em;padding:6px 14px;border-radius:2px;cursor:pointer;text-transform:uppercase;">rec</button>
+      <button type="button" id="camera-toggle" style="background:none;border:1px solid rgba(255,255,255,0.4);color:rgba(255,255,255,0.7);font-family:Georgia,serif;font-size:10px;letter-spacing:0.12em;padding:6px 14px;border-radius:2px;cursor:pointer;text-transform:uppercase;">camera</button>
+      <button type="button" id="rec-btn" style="display:none;background:none;border:1px solid rgba(255,255,255,0.4);color:rgba(255,255,255,0.7);font-family:Georgia,serif;font-size:10px;letter-spacing:0.12em;padding:6px 14px;border-radius:2px;cursor:pointer;text-transform:uppercase;">rec</button>
       <div id="opacity-control">
         <span id="opacity-label">opacity</span>
         <input type="range" id="opacity-slider" min="10" max="100" value="75">
@@ -218,7 +218,7 @@
 
   <div id="ui">
     <div id="status">tap to start camera</div>
-    <button id="start-btn">Start</button>
+    <button type="button" id="start-btn">Start</button>
   </div>
 </div>
 

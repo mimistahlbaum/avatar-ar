@@ -208,6 +208,7 @@
     </div>
     <div style="display:flex;align-items:center;gap:16px;">
       <button id="camera-toggle" style="background:none;border:1px solid rgba(255,255,255,0.4);color:rgba(255,255,255,0.7);font-family:Georgia,serif;font-size:10px;letter-spacing:0.12em;padding:6px 14px;border-radius:2px;cursor:pointer;text-transform:uppercase;">camera</button>
+      <button id="rec-btn" style="display:none;background:none;border:1px solid rgba(255,255,255,0.4);color:rgba(255,255,255,0.7);font-family:Georgia,serif;font-size:10px;letter-spacing:0.12em;padding:6px 14px;border-radius:2px;cursor:pointer;text-transform:uppercase;">rec</button>
       <div id="opacity-control">
         <span id="opacity-label">opacity</span>
         <input type="range" id="opacity-slider" min="10" max="100" value="75">
@@ -232,6 +233,8 @@ const statusEl = document.getElementById('status');
 const startBtn = document.getElementById('start-btn');
 const loadingEl = document.getElementById('loading');
 const opacitySlider = document.getElementById('opacity-slider');
+const cameraToggle = document.getElementById('camera-toggle');
+const recBtn = document.getElementById('rec-btn');
 
 const AVATARS = [
   { id:'default',      label:'I',   headScale:1.0,  torsoRxScale:1.0,  torsoRyScale:1.0,  armScale:1.0,  legScale:1.0,  wobble:0.18, headWobble:0.10, asymL:1.0,  asymR:1.0  },
@@ -244,6 +247,9 @@ let currentAvatar = 0;
 let avatarOpacity = 0.75;
 let poseResults = null;
 let animFrame = 0;
+let cameraVisible = true;
+let mediaRecorder = null;
+let recordChunks = [];
 
 opacitySlider.addEventListener('input', () => {
   avatarOpacity = opacitySlider.value / 100;
@@ -462,6 +468,9 @@ startBtn.addEventListener('click', async () => {
     });
     await camera.start();
 
+    video.classList.add('visible');
+    cameraToggle.style.color = 'rgba(255,255,255,0.7)';
+    recBtn.style.display = '';
     statusEl.textContent = 'move freely';
     document.getElementById('ui').style.display = 'none';
 
@@ -469,6 +478,42 @@ startBtn.addEventListener('click', async () => {
     statusEl.textContent = 'camera error — try reloading';
     startBtn.disabled = false;
     console.error(err);
+  }
+});
+
+// ── camera toggle ──
+cameraToggle.addEventListener('click', () => {
+  cameraVisible = !cameraVisible;
+  video.classList.toggle('visible', cameraVisible);
+  cameraToggle.style.color = cameraVisible ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.3)';
+});
+
+// ── recording ──
+recBtn.addEventListener('click', () => {
+  if (mediaRecorder && mediaRecorder.state === 'recording') {
+    mediaRecorder.stop();
+  } else {
+    recordChunks = [];
+    const stream = canvas.captureStream(30);
+    mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+    mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordChunks.push(e.data); };
+    mediaRecorder.onstop = () => {
+      const blob = new Blob(recordChunks, { type: 'video/webm' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      a.download = `avatar-ar-${ts}.webm`;
+      a.href = url;
+      a.click();
+      URL.revokeObjectURL(url);
+      recBtn.textContent = 'rec';
+      recBtn.style.color = 'rgba(255,255,255,0.7)';
+      recBtn.style.borderColor = 'rgba(255,255,255,0.4)';
+    };
+    mediaRecorder.start();
+    recBtn.textContent = '● stop';
+    recBtn.style.color = 'rgba(255,100,100,0.9)';
+    recBtn.style.borderColor = 'rgba(255,100,100,0.6)';
   }
 });
 

@@ -237,10 +237,10 @@ const cameraToggle = document.getElementById('camera-toggle');
 const recBtn = document.getElementById('rec-btn');
 
 const AVATARS = [
-  { id:'default',      label:'I',   headScale:1.0,  torsoRxScale:1.0,  torsoRyScale:1.0,  armScale:1.0,  legScale:1.0,  wobble:0.18, headWobble:0.10, asymL:1.0,  asymR:1.0  },
-  { id:'long-limbed',  label:'II',  headScale:0.80, torsoRxScale:0.85, torsoRyScale:0.90, armScale:0.70, legScale:0.75, wobble:0.12, headWobble:0.08, asymL:1.0,  asymR:1.0  },
-  { id:'top-heavy',    label:'III', headScale:1.55, torsoRxScale:1.20, torsoRyScale:0.95, armScale:1.10, legScale:0.80, wobble:0.14, headWobble:0.18, asymL:1.0,  asymR:1.0  },
-  { id:'asymmetrical', label:'IV',  headScale:1.0,  torsoRxScale:1.05, torsoRyScale:1.0,  armScale:1.0,  legScale:1.0,  wobble:0.18, headWobble:0.10, asymL:1.35, asymR:0.72 },
+  { id:'default', label:'I',   headScale:1.0,  torsoRxScale:1.0,  torsoRyScale:1.0,  armScale:1.0,  legScale:1.0,  wobble:0.18, headWobble:0.10, asymL:1.0,  asymR:1.0,  fill:'rgba(230, 225, 215, 0.92)', stroke:'rgba(20, 20, 20, 0.9)' },
+  { id:'wisp',    label:'II',  headScale:0.38, torsoRxScale:0.48, torsoRyScale:1.30, armScale:0.28, legScale:0.30, wobble:0.04, headWobble:0.02, asymL:1.0,  asymR:1.0,  fill:'rgba(175, 210, 245, 0.90)', stroke:'rgba(30, 60, 120, 0.85)' },
+  { id:'bubble',  label:'III', headScale:2.50, torsoRxScale:1.70, torsoRyScale:0.80, armScale:1.35, legScale:0.38, wobble:0.35, headWobble:0.30, asymL:1.0,  asymR:1.0,  fill:'rgba(245, 200, 130, 0.93)', stroke:'rgba(90, 45, 10, 0.88)' },
+  { id:'split',   label:'IV',  headScale:1.0,  torsoRxScale:1.05, torsoRyScale:1.0,  armScale:1.0,  legScale:1.0,  wobble:0.20, headWobble:0.12, asymL:2.10, asymR:0.35, fill:'rgba(225, 200, 215, 0.92)', stroke:'rgba(80, 20, 60, 0.88)' },
 ];
 let currentAvatar = 0;
 
@@ -363,8 +363,8 @@ function drawAvatar(landmarks) {
   ctx.save();
   ctx.globalAlpha = avatarOpacity;
 
-  const fill = 'rgba(230, 225, 215, 0.92)';
-  const stroke = 'rgba(20, 20, 20, 0.9)';
+  const fill = cfg.fill;
+  const stroke = cfg.stroke;
   const lineW = Math.max(1, scale * 0.025);
 
   ctx.strokeStyle = stroke;

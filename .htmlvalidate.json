@@ -3,6 +3,7 @@
   "rules": {
     "no-inline-style": "off",
     "require-sri": "off",
-    "script-type": "off"
+    "script-type": "off",
+    "no-autoplay": "off"
   }
 }

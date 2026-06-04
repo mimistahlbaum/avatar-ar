@@ -237,10 +237,10 @@ const cameraToggle = document.getElementById('camera-toggle');
 const recBtn = document.getElementById('rec-btn');
 
 const AVATARS = [
-  { id:'default', label:'I',   headScale:1.0,  torsoRxScale:1.0,  torsoRyScale:1.0,  armScale:1.0,  legScale:1.0,  wobble:0.18, headWobble:0.10, asymL:1.0,  asymR:1.0,  fill:'rgba(230, 225, 215, 0.92)', stroke:'rgba(20, 20, 20, 0.9)' },
-  { id:'wisp',    label:'II',  headScale:0.38, torsoRxScale:0.48, torsoRyScale:1.30, armScale:0.28, legScale:0.30, wobble:0.04, headWobble:0.02, asymL:1.0,  asymR:1.0,  fill:'rgba(175, 210, 245, 0.90)', stroke:'rgba(30, 60, 120, 0.85)' },
-  { id:'bubble',  label:'III', headScale:2.50, torsoRxScale:1.70, torsoRyScale:0.80, armScale:1.35, legScale:0.38, wobble:0.35, headWobble:0.30, asymL:1.0,  asymR:1.0,  fill:'rgba(245, 200, 130, 0.93)', stroke:'rgba(90, 45, 10, 0.88)' },
-  { id:'split',   label:'IV',  headScale:1.0,  torsoRxScale:1.05, torsoRyScale:1.0,  armScale:1.0,  legScale:1.0,  wobble:0.20, headWobble:0.12, asymL:2.10, asymR:0.35, fill:'rgba(225, 200, 215, 0.92)', stroke:'rgba(80, 20, 60, 0.88)' },
+  { id:'default', label:'I',   headScale:1.0,  torsoRxScale:1.0,  torsoRyScale:1.0,  armScale:1.0,  legScale:1.0,  armLen:1.0, legLen:1.0, wobble:0.18, headWobble:0.10, asymL:1.0,  asymR:1.0,  asymLLen:1.0, asymRLen:1.0, fill:'rgba(230, 225, 215, 0.92)', stroke:'rgba(20, 20, 20, 0.9)' },
+  { id:'wisp',    label:'II',  headScale:0.38, torsoRxScale:0.48, torsoRyScale:1.30, armScale:0.28, legScale:0.30, armLen:4.0, legLen:4.0, wobble:0.04, headWobble:0.02, asymL:1.0,  asymR:1.0,  asymLLen:1.0, asymRLen:1.0, fill:'rgba(175, 210, 245, 0.90)', stroke:'rgba(30, 60, 120, 0.85)' },
+  { id:'bubble',  label:'III', headScale:4.0,  torsoRxScale:1.70, torsoRyScale:0.80, armScale:1.35, legScale:0.38, armLen:1.0, legLen:1.0, wobble:0.35, headWobble:0.30, asymL:1.0,  asymR:1.0,  asymLLen:1.0, asymRLen:1.0, fill:'rgba(245, 200, 130, 0.93)', stroke:'rgba(90, 45, 10, 0.88)' },
+  { id:'split',   label:'IV',  headScale:1.0,  torsoRxScale:1.05, torsoRyScale:1.0,  armScale:1.0,  legScale:1.0,  armLen:1.0, legLen:1.0, wobble:0.20, headWobble:0.12, asymL:2.0,  asymR:0.35, asymLLen:2.2, asymRLen:0.45, fill:'rgba(225, 200, 215, 0.92)', stroke:'rgba(80, 20, 60, 0.88)' },
 ];
 let currentAvatar = 0;
 
@@ -298,6 +298,11 @@ function blobPath(ctx, cx, cy, rx, ry, pts = 8, wobble = 0.18) {
   ctx.closePath();
 }
 
+// ── stretch a point away from an origin by scale ──
+function stretch(from, to, scale) {
+  return { x: from.x + (to.x - from.x) * scale, y: from.y + (to.y - from.y) * scale };
+}
+
 // ── draw organic limb (tapered capsule) ──
 function organicLimb(ctx, x1, y1, x2, y2, r1, r2) {
   const dx = x2 - x1;
@@ -341,6 +346,24 @@ function drawAvatar(landmarks) {
   const lAnk    = lm(landmarks, 27);
   const rAnk    = lm(landmarks, 28);
 
+  // stretched limb endpoints (computed after cfg is defined below)
+  const _cfg = AVATARS[currentAvatar];
+  const aLLen = _cfg.asymLLen;
+  const aRLen = _cfg.asymRLen;
+  const alS  = _cfg.armLen * aLLen;
+  const arS  = _cfg.armLen * aRLen;
+  const llS  = _cfg.legLen * aLLen;
+  const lrS  = _cfg.legLen * aRLen;
+
+  const lElbS = stretch(lSho, lElb, alS);
+  const lWriS = { x: lElbS.x + (lWri.x - lElb.x) * alS, y: lElbS.y + (lWri.y - lElb.y) * alS };
+  const rElbS = stretch(rSho, rElb, arS);
+  const rWriS = { x: rElbS.x + (rWri.x - rElb.x) * arS, y: rElbS.y + (rWri.y - rElb.y) * arS };
+  const lKneS = stretch(lHip, lKne, llS);
+  const lAnkS = { x: lKneS.x + (lAnk.x - lKne.x) * llS, y: lKneS.y + (lAnk.y - lKne.y) * llS };
+  const rKneS = stretch(rHip, rKne, lrS);
+  const rAnkS = { x: rKneS.x + (rAnk.x - rKne.x) * lrS, y: rKneS.y + (rAnk.y - rKne.y) * lrS };
+
   // derived
   const torsoTop = { x: (lSho.x + rSho.x) / 2, y: (lSho.y + rSho.y) / 2 };
   const torsoBot = { x: (lHip.x + rHip.x) / 2, y: (lHip.y + rHip.y) / 2 };
@@ -374,14 +397,14 @@ function drawAvatar(landmarks) {
 
   // ── legs ──
   ctx.fillStyle = fill;
-  organicLimb(ctx, lHip.x, lHip.y, lKne.x, lKne.y, legR1 * aL, legR1 * 0.9 * aL);
+  organicLimb(ctx, lHip.x, lHip.y, lKneS.x, lKneS.y, legR1 * aL, legR1 * 0.9 * aL);
   ctx.fill(); ctx.stroke();
-  organicLimb(ctx, lKne.x, lKne.y, lAnk.x, lAnk.y, legR1 * 0.85 * aL, legR2 * aL);
+  organicLimb(ctx, lKneS.x, lKneS.y, lAnkS.x, lAnkS.y, legR1 * 0.85 * aL, legR2 * aL);
   ctx.fill(); ctx.stroke();
 
-  organicLimb(ctx, rHip.x, rHip.y, rKne.x, rKne.y, legR1 * aR, legR1 * 0.9 * aR);
+  organicLimb(ctx, rHip.x, rHip.y, rKneS.x, rKneS.y, legR1 * aR, legR1 * 0.9 * aR);
   ctx.fill(); ctx.stroke();
-  organicLimb(ctx, rKne.x, rKne.y, rAnk.x, rAnk.y, legR1 * 0.85 * aR, legR2 * aR);
+  organicLimb(ctx, rKneS.x, rKneS.y, rAnkS.x, rAnkS.y, legR1 * 0.85 * aR, legR2 * aR);
   ctx.fill(); ctx.stroke();
 
   // ── torso blob ──
@@ -393,14 +416,14 @@ function drawAvatar(landmarks) {
   ctx.stroke();
 
   // ── arms ──
-  organicLimb(ctx, lSho.x, lSho.y, lElb.x, lElb.y, armR1 * aL, armR1 * 0.9 * aL);
+  organicLimb(ctx, lSho.x, lSho.y, lElbS.x, lElbS.y, armR1 * aL, armR1 * 0.9 * aL);
   ctx.fill(); ctx.stroke();
-  organicLimb(ctx, lElb.x, lElb.y, lWri.x, lWri.y, armR1 * 0.85 * aL, armR2 * aL);
+  organicLimb(ctx, lElbS.x, lElbS.y, lWriS.x, lWriS.y, armR1 * 0.85 * aL, armR2 * aL);
   ctx.fill(); ctx.stroke();
 
-  organicLimb(ctx, rSho.x, rSho.y, rElb.x, rElb.y, armR1 * aR, armR1 * 0.9 * aR);
+  organicLimb(ctx, rSho.x, rSho.y, rElbS.x, rElbS.y, armR1 * aR, armR1 * 0.9 * aR);
   ctx.fill(); ctx.stroke();
-  organicLimb(ctx, rElb.x, rElb.y, rWri.x, rWri.y, armR1 * 0.85 * aR, armR2 * aR);
+  organicLimb(ctx, rElbS.x, rElbS.y, rWriS.x, rWriS.y, armR1 * 0.85 * aR, armR2 * aR);
   ctx.fill(); ctx.stroke();
 
   // ── head blob ──

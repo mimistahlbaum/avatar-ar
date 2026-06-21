@@ -143,6 +143,49 @@
     cursor: pointer;
   }
 
+  #research-panel {
+    position: absolute;
+    left: 24px;
+    bottom: 24px;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: min(280px, calc(100vw - 48px));
+    padding: 12px;
+    background: rgba(0,0,0,0.55);
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 2px;
+  }
+
+  #research-panel label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    color: rgba(255,255,255,0.45);
+    text-transform: uppercase;
+  }
+
+  #research-panel input,
+  #research-panel textarea {
+    width: 100%;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.18);
+    color: rgba(255,255,255,0.85);
+    font-family: 'Georgia', serif;
+    font-size: 11px;
+    padding: 7px 8px;
+    border-radius: 2px;
+    outline: none;
+  }
+
+  #research-panel textarea {
+    min-height: 48px;
+    resize: vertical;
+  }
+
   #loading {
     position: absolute;
     inset: 0;
@@ -216,6 +259,21 @@
     </div>
   </div>
 
+  <div id="research-panel">
+    <label>
+      Participant ID
+      <input id="participant-id" type="text" autocomplete="off" placeholder="P001">
+    </label>
+    <label>
+      Condition label
+      <input id="condition-label" type="text" autocomplete="off" placeholder="Avatar I / warm-up / task A">
+    </label>
+    <label>
+      Session notes
+      <textarea id="session-notes" placeholder="Optional notes"></textarea>
+    </label>
+  </div>
+
   <div id="ui">
     <div id="status">tap to start camera</div>
     <button type="button" id="start-btn">Start</button>
@@ -235,6 +293,9 @@ const loadingEl = document.getElementById('loading');
 const opacitySlider = document.getElementById('opacity-slider');
 const cameraToggle = document.getElementById('camera-toggle');
 const recBtn = document.getElementById('rec-btn');
+const participantIdInput = document.getElementById('participant-id');
+const conditionLabelInput = document.getElementById('condition-label');
+const sessionNotesInput = document.getElementById('session-notes');
 
 const AVATARS = [
   { id:'default', label:'I',   headScale:1.0,  torsoRxScale:1.0,  torsoRyScale:1.0,  armScale:1.0,  legScale:1.0,  armLen:1.0, legLen:1.0, wobble:0.18, headWobble:0.10, asymL:1.0,  asymR:1.0,  asymLLen:1.0, asymRLen:1.0, fill:'rgba(230, 225, 215, 0.92)', stroke:'rgba(20, 20, 20, 0.9)' },
@@ -250,9 +311,26 @@ let animFrame = 0;
 let cameraVisible = true;
 let mediaRecorder = null;
 let recordChunks = [];
+let researchSession = {
+  participantId: '',
+  conditionLabel: '',
+  sessionNotes: ''
+};
 
 opacitySlider.addEventListener('input', () => {
   avatarOpacity = opacitySlider.value / 100;
+});
+
+participantIdInput.addEventListener('input', () => {
+  researchSession.participantId = participantIdInput.value.trim();
+});
+
+conditionLabelInput.addEventListener('input', () => {
+  researchSession.conditionLabel = conditionLabelInput.value.trim();
+});
+
+sessionNotesInput.addEventListener('input', () => {
+  researchSession.sessionNotes = sessionNotesInput.value.trim();
 });
 
 function resizeCanvas() {

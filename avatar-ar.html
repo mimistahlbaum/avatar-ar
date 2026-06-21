@@ -311,6 +311,8 @@ let animFrame = 0;
 let cameraVisible = true;
 let mediaRecorder = null;
 let recordChunks = [];
+let activeSessionId = null;
+let recordingStartedAt = null;
 let researchSession = {
   participantId: '',
   conditionLabel: '',
@@ -545,6 +547,62 @@ function initPose() {
   return pose;
 }
 
+function makeSessionId() {
+  if (window.crypto && window.crypto.randomUUID) return window.crypto.randomUUID();
+  return `session-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function downloadJson(data, filename) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.download = filename;
+  a.href = url;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function buildMetadata(endedAt, videoFilename) {
+  const avatar = AVATARS[currentAvatar];
+  return {
+    tool: 'Avatar AR',
+    schemaVersion: '0.1.0',
+    sessionId: activeSessionId,
+    participantId: researchSession.participantId,
+    conditionLabel: researchSession.conditionLabel,
+    sessionNotes: researchSession.sessionNotes,
+    timestamp: endedAt.toISOString(),
+    startedAt: recordingStartedAt ? recordingStartedAt.toISOString() : null,
+    endedAt: endedAt.toISOString(),
+    durationMs: recordingStartedAt ? endedAt.getTime() - recordingStartedAt.getTime() : null,
+    selectedAvatarIndex: currentAvatar,
+    selectedAvatar: { ...avatar },
+    opacity: avatarOpacity,
+    cameraVisible,
+    canvas: {
+      width: canvas.width,
+      height: canvas.height
+    },
+    video: {
+      width: video.videoWidth || null,
+      height: video.videoHeight || null
+    },
+    recording: {
+      videoFilename,
+      mimeType: 'video/webm',
+      frameRate: 30
+    },
+    poseDetection: {
+      library: 'MediaPipe Pose',
+      modelComplexity: 1,
+      smoothLandmarks: true,
+      enableSegmentation: false,
+      minDetectionConfidence: 0.5,
+      minTrackingConfidence: 0.5
+    }
+  };
+}
+
 // ── start camera ──
 startBtn.addEventListener('click', async () => {
   startBtn.disabled = true;
@@ -595,6 +653,8 @@ recBtn.addEventListener('click', () => {
     mediaRecorder.stop();
   } else {
     recordChunks = [];
+    activeSessionId = makeSessionId();
+    recordingStartedAt = new Date();
     const stream = canvas.captureStream(30);
     mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
     mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordChunks.push(e.data); };
@@ -602,11 +662,17 @@ recBtn.addEventListener('click', () => {
       const blob = new Blob(recordChunks, { type: 'video/webm' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-      a.download = `avatar-ar-${ts}.webm`;
+      const endedAt = new Date();
+      const ts = endedAt.toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      const baseName = `avatar-ar-${activeSessionId}-${ts}`;
+      const videoFilename = `${baseName}.webm`;
+      a.download = videoFilename;
       a.href = url;
       a.click();
       URL.revokeObjectURL(url);
+      downloadJson(buildMetadata(endedAt, videoFilename), `${baseName}.metadata.json`);
+      activeSessionId = null;
+      recordingStartedAt = null;
       recBtn.textContent = 'rec';
       recBtn.style.color = 'rgba(255,255,255,0.7)';
       recBtn.style.borderColor = 'rgba(255,255,255,0.4)';

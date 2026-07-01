@@ -10,6 +10,10 @@ The current version is a lightweight practice-based research prototype. It is in
 
 GitHub Pages:
 
+https://mimistahlbaum.github.io/avatar-ar
+
+Direct file URL, also available:
+
 https://mimistahlbaum.github.io/avatar-ar/avatar-ar.html
 
 ## What it does
@@ -21,11 +25,13 @@ https://mimistahlbaum.github.io/avatar-ar/avatar-ar.html
 - Allows opacity adjustment
 - Allows the live camera feed to be shown or hidden
 - Records a video clip as `.webm`
+- Exports a companion `.metadata.json` file for each recording
+- Includes participant ID, condition label and session notes fields
 - Runs entirely in the browser
 
 ## How to use
 
-Open the URL on a phone browser, Safari or Chrome, tap **Start** and allow camera access.
+Open the GitHub Pages URL on a phone browser, Safari or Chrome, tap **Start** and allow camera access.
 
 Controls in the top bar:
 
@@ -33,6 +39,12 @@ Controls in the top bar:
 - **camera**: toggle the live camera feed on or off while avatar tracking continues
 - **rec**: record a video clip, downloaded as `.webm` when stopped
 - **opacity**: adjust how opaque the avatar appears
+
+Research fields:
+
+- **Participant ID**: optional participant/session identifier
+- **Condition label**: optional label for the current avatar condition or task
+- **Session notes**: optional notes saved into the metadata export
 
 ## Avatar forms
 
@@ -61,12 +73,14 @@ These presets should be understood as movement-perception conditions, not charac
 
 The prototype is intentionally simple:
 
-- single HTML file
+- single main HTML file
+- lightweight GitHub Pages entry point
 - inline CSS
 - inline JavaScript
 - MediaPipe Pose loaded from jsDelivr CDN
 - Canvas 2D rendering
 - MediaRecorder for browser-based video export
+- metadata JSON export generated in-browser
 - no build step
 - no server
 - no database
@@ -84,30 +98,25 @@ Avatar AR may support questions such as:
 
 ## Current limitations
 
-- No participant ID field yet
-- No condition label field yet
-- No session notes field yet
-- No metadata JSON export yet
 - No full per-frame landmark logging yet
 - No consent workflow
-- No automatic pairing between recorded video and session metadata
 - Recording captures the canvas output only, not the original camera feed
 - Browser support depends on camera permissions, MediaRecorder support and MediaPipe loading
+- The `/avatar-ar` directory URL uses a small GitHub Pages wrapper around the main `avatar-ar.html` file
 
 ## Planned development
 
 Suggested next steps:
 
-1. Add research mode with participant ID, condition label and session notes
-2. Export a lightweight metadata JSON file alongside each recording
-3. Add optional per-frame landmark logging for research sessions
-4. Add structured condition sequencing for avatar comparison tasks
-5. Separate CSS and JavaScript into dedicated files once the prototype stabilises
-6. Add a short research protocol for practice-based PhD use
+1. Add optional per-frame landmark logging for research sessions
+2. Add structured condition sequencing for avatar comparison tasks
+3. Add a consent and participant workflow for research use
+4. Separate CSS and JavaScript into dedicated files once the prototype stabilises
+5. Add a short research protocol for practice-based PhD use
 
-## Proposed metadata fields
+## Metadata export
 
-Future metadata export should include:
+Each recording exports a companion metadata JSON file. The current metadata includes:
 
 ```json
 {
@@ -116,12 +125,36 @@ Future metadata export should include:
   "sessionId": "...",
   "participantId": "...",
   "conditionLabel": "...",
+  "sessionNotes": "...",
   "timestamp": "...",
-  "selectedAvatarIndex": 2,
+  "startedAt": "...",
+  "endedAt": "...",
+  "durationMs": 0,
+  "selectedAvatarIndex": 0,
   "selectedAvatar": {},
   "opacity": 0.75,
   "cameraVisible": true,
-  "notes": "..."
+  "canvas": {
+    "width": 0,
+    "height": 0
+  },
+  "video": {
+    "width": 0,
+    "height": 0
+  },
+  "recording": {
+    "videoFilename": "...",
+    "mimeType": "video/webm",
+    "frameRate": 30
+  },
+  "poseDetection": {
+    "library": "MediaPipe Pose",
+    "modelComplexity": 1,
+    "smoothLandmarks": true,
+    "enableSegmentation": false,
+    "minDetectionConfidence": 0.5,
+    "minTrackingConfidence": 0.5
+  }
 }
 ```
 
@@ -140,6 +173,6 @@ A later version may also export landmark data:
 
 ## Privacy note
 
-The current tool runs in the browser. It does not upload camera footage or landmark data to a server. Recordings are downloaded locally by the user.
+The current tool runs in the browser. It does not upload camera footage or landmark data to a server. Recordings and metadata files are downloaded locally by the user.
 
 Recorded movement data should still be treated as sensitive research material. Consent, storage and access should be managed appropriately before using this tool with participants.

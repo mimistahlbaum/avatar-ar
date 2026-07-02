@@ -24,7 +24,7 @@ https://mimistahlbaum.github.io/avatar-ar/avatar-ar.html
 - Provides four avatar forms
 - Allows opacity adjustment
 - Allows the live camera feed to be shown or hidden
-- Records a video clip as `.webm`
+- Records a video clip as `.webm`, falling back to `.mp4` on browsers without WebM recording support such as Safari
 - Exports a companion `.metadata.json` file for each recording
 - Includes participant ID, condition label and session notes fields
 - Runs entirely in the browser
@@ -37,7 +37,7 @@ Controls in the top bar:
 
 - **I / II / III / IV**: switch between avatar forms
 - **camera**: toggle the live camera feed on or off while avatar tracking continues
-- **rec**: record a video clip, downloaded as `.webm` when stopped
+- **rec**: record a video clip, downloaded as `.webm` (or `.mp4` on Safari) when stopped
 - **opacity**: adjust how opaque the avatar appears
 
 Research fields:

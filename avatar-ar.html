@@ -313,6 +313,7 @@ let mediaRecorder = null;
 let recordChunks = [];
 let activeSessionId = null;
 let recordingStartedAt = null;
+let recordingMimeType = null;
 let researchSession = {
   participantId: '',
   conditionLabel: '',
@@ -426,14 +427,14 @@ function drawAvatar(landmarks) {
   const lAnk    = lm(landmarks, 27);
   const rAnk    = lm(landmarks, 28);
 
-  // stretched limb endpoints (computed after cfg is defined below)
-  const _cfg = AVATARS[currentAvatar];
-  const aLLen = _cfg.asymLLen;
-  const aRLen = _cfg.asymRLen;
-  const alS  = _cfg.armLen * aLLen;
-  const arS  = _cfg.armLen * aRLen;
-  const llS  = _cfg.legLen * aLLen;
-  const lrS  = _cfg.legLen * aRLen;
+  // stretched limb endpoints
+  const cfg = AVATARS[currentAvatar];
+  const aLLen = cfg.asymLLen;
+  const aRLen = cfg.asymRLen;
+  const alS  = cfg.armLen * aLLen;
+  const arS  = cfg.armLen * aRLen;
+  const llS  = cfg.legLen * aLLen;
+  const lrS  = cfg.legLen * aRLen;
 
   const lElbS = stretch(lSho, lElb, alS);
   const lWriS = { x: lElbS.x + (lWri.x - lElb.x) * alS, y: lElbS.y + (lWri.y - lElb.y) * alS };
@@ -451,7 +452,6 @@ function drawAvatar(landmarks) {
   const torsoH = Math.abs(torsoBot.y - torsoTop.y);
 
   // scale-relative radii
-  const cfg = AVATARS[currentAvatar];
   const scale = shoulderW;
   const headR   = scale * 0.42 * cfg.headScale;
   const torsoRx = scale * 0.52 * cfg.torsoRxScale;
@@ -547,6 +547,20 @@ function initPose() {
   return pose;
 }
 
+// Prefer WebM, fall back to MP4 for browsers without WebM recording (e.g. Safari).
+// Returns '' to let the browser choose, or null when recording is unsupported.
+function pickRecordingMimeType() {
+  if (!window.MediaRecorder) return null;
+  if (typeof MediaRecorder.isTypeSupported !== 'function') return '';
+  const supported = ['video/webm;codecs=vp9', 'video/webm', 'video/mp4']
+    .find(type => MediaRecorder.isTypeSupported(type));
+  return supported || '';
+}
+
+function recordingExtension(mimeType) {
+  return mimeType && mimeType.includes('mp4') ? 'mp4' : 'webm';
+}
+
 function makeSessionId() {
   if (window.crypto && window.crypto.randomUUID) return window.crypto.randomUUID();
   return `session-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -589,7 +603,7 @@ function buildMetadata(endedAt, videoFilename) {
     },
     recording: {
       videoFilename,
-      mimeType: 'video/webm',
+      mimeType: recordingMimeType || 'video/webm',
       frameRate: 30
     },
     poseDetection: {
@@ -629,7 +643,7 @@ startBtn.addEventListener('click', async () => {
 
     video.classList.add('visible');
     cameraToggle.style.color = 'rgba(255,255,255,0.7)';
-    recBtn.style.display = '';
+    if (pickRecordingMimeType() !== null) recBtn.style.display = '';
     statusEl.textContent = 'move freely';
     document.getElementById('ui').style.display = 'none';
 
@@ -652,20 +666,33 @@ recBtn.addEventListener('click', () => {
   if (mediaRecorder && mediaRecorder.state === 'recording') {
     mediaRecorder.stop();
   } else {
+    const preferredMimeType = pickRecordingMimeType();
+    if (preferredMimeType === null) {
+      console.error('MediaRecorder is not supported in this browser');
+      return;
+    }
     recordChunks = [];
+    const stream = canvas.captureStream(30);
+    try {
+      mediaRecorder = preferredMimeType
+        ? new MediaRecorder(stream, { mimeType: preferredMimeType })
+        : new MediaRecorder(stream);
+    } catch (err) {
+      console.error('Could not start recording', err);
+      return;
+    }
     activeSessionId = makeSessionId();
     recordingStartedAt = new Date();
-    const stream = canvas.captureStream(30);
-    mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+    recordingMimeType = mediaRecorder.mimeType || preferredMimeType || 'video/webm';
     mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordChunks.push(e.data); };
     mediaRecorder.onstop = () => {
-      const blob = new Blob(recordChunks, { type: 'video/webm' });
+      const blob = new Blob(recordChunks, { type: recordingMimeType });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       const endedAt = new Date();
       const ts = endedAt.toISOString().replace(/[:.]/g, '-').slice(0, 19);
       const baseName = `avatar-ar-${activeSessionId}-${ts}`;
-      const videoFilename = `${baseName}.webm`;
+      const videoFilename = `${baseName}.${recordingExtension(recordingMimeType)}`;
       a.download = videoFilename;
       a.href = url;
       a.click();
@@ -673,6 +700,7 @@ recBtn.addEventListener('click', () => {
       downloadJson(buildMetadata(endedAt, videoFilename), `${baseName}.metadata.json`);
       activeSessionId = null;
       recordingStartedAt = null;
+      recordingMimeType = null;
       recBtn.textContent = 'rec';
       recBtn.style.color = 'rgba(255,255,255,0.7)';
       recBtn.style.borderColor = 'rgba(255,255,255,0.4)';

@@ -7,6 +7,8 @@
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
+  [hidden] { display: none !important; }
+
   body {
     background: #0a0a0a;
     font-family: 'Georgia', serif;
@@ -39,42 +41,6 @@
     height: 100%;
     transform: scaleX(-1);
   }
-
-  #ui {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    padding: 24px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 16px;
-    z-index: 10;
-    background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 100%);
-  }
-
-  #status {
-    font-size: 11px;
-    letter-spacing: 0.15em;
-    color: rgba(255,255,255,0.5);
-    text-transform: uppercase;
-  }
-
-  #start-btn {
-    background: none;
-    border: 1px solid rgba(255,255,255,0.6);
-    color: white;
-    font-family: 'Georgia', serif;
-    font-size: 14px;
-    letter-spacing: 0.1em;
-    padding: 12px 32px;
-    cursor: pointer;
-    border-radius: 2px;
-    transition: all 0.3s;
-  }
-  #start-btn:hover { background: rgba(255,255,255,0.1); }
-  #start-btn:active { background: rgba(255,255,255,0.2); }
 
   #top-bar {
     position: absolute;
@@ -113,6 +79,19 @@
   .av-btn:hover { border-color: rgba(255,255,255,0.55); color: rgba(255,255,255,0.75); }
   .av-btn.active { background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.7); color: white; }
 
+  .bar-btn {
+    background: none;
+    border: 1px solid rgba(255,255,255,0.4);
+    color: rgba(255,255,255,0.7);
+    font-family: 'Georgia', serif;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    padding: 6px 14px;
+    border-radius: 2px;
+    cursor: pointer;
+    text-transform: uppercase;
+  }
+
   #opacity-control {
     display: flex;
     align-items: center;
@@ -143,6 +122,52 @@
     cursor: pointer;
   }
 
+  #hint {
+    position: absolute;
+    top: 72px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 11;
+    max-width: min(420px, calc(100vw - 48px));
+    padding: 8px 14px;
+    background: rgba(0,0,0,0.7);
+    border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 2px;
+    color: rgba(255,255,255,0.85);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-align: center;
+  }
+
+  #error-banner {
+    position: absolute;
+    top: 72px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 12;
+    max-width: min(460px, calc(100vw - 48px));
+    padding: 10px 14px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    background: rgba(60, 10, 10, 0.9);
+    border: 1px solid rgba(255, 120, 120, 0.6);
+    border-radius: 2px;
+    color: rgba(255, 220, 220, 0.95);
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    line-height: 1.5;
+  }
+  #error-dismiss {
+    background: none;
+    border: none;
+    color: rgba(255, 200, 200, 0.8);
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 2px;
+  }
+
   #research-panel {
     position: absolute;
     left: 24px;
@@ -151,7 +176,9 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-    width: min(280px, calc(100vw - 48px));
+    width: min(300px, calc(100vw - 48px));
+    max-height: calc(100vh - 140px);
+    overflow-y: auto;
     padding: 12px;
     background: rgba(0,0,0,0.55);
     border: 1px solid rgba(255,255,255,0.18);
@@ -168,7 +195,7 @@
     text-transform: uppercase;
   }
 
-  #research-panel input,
+  #research-panel input[type=text],
   #research-panel textarea {
     width: 100%;
     background: rgba(255,255,255,0.08);
@@ -186,6 +213,158 @@
     resize: vertical;
   }
 
+  #research-panel select {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.18);
+    color: rgba(255,255,255,0.85);
+    font-family: 'Georgia', serif;
+    font-size: 11px;
+    padding: 5px 6px;
+    border-radius: 2px;
+    outline: none;
+  }
+  #research-panel select option { background: #1a1a1a; }
+
+  .rp-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .rp-inline {
+    flex-direction: row !important;
+    align-items: center;
+    gap: 6px !important;
+  }
+
+  .rp-divider {
+    border-top: 1px solid rgba(255,255,255,0.14);
+    margin: 4px 0;
+  }
+
+  .rp-heading {
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    color: rgba(255,255,255,0.55);
+    text-transform: uppercase;
+  }
+
+  .rp-btn {
+    background: none;
+    border: 1px solid rgba(255,255,255,0.3);
+    color: rgba(255,255,255,0.7);
+    font-family: 'Georgia', serif;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    padding: 5px 10px;
+    border-radius: 2px;
+    cursor: pointer;
+    text-transform: uppercase;
+  }
+  .rp-btn:disabled { opacity: 0.35; cursor: default; }
+
+  #seq-status {
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    color: rgba(255,255,255,0.75);
+    line-height: 1.6;
+  }
+
+  #consent {
+    position: absolute;
+    inset: 0;
+    z-index: 18;
+    background: rgba(10, 10, 10, 0.96);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    overflow-y: auto;
+  }
+
+  #consent-card {
+    max-width: 520px;
+    max-height: calc(100vh - 48px);
+    overflow-y: auto;
+    padding: 28px;
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 2px;
+    background: rgba(0,0,0,0.5);
+    color: rgba(255,255,255,0.85);
+  }
+
+  #consent-card h1 {
+    font-size: 13px;
+    font-weight: normal;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.9);
+    margin-bottom: 16px;
+  }
+
+  #consent-card p {
+    font-size: 12px;
+    line-height: 1.7;
+    color: rgba(255,255,255,0.7);
+    margin-bottom: 12px;
+  }
+
+  #consent-card ul {
+    list-style: none;
+    margin-bottom: 16px;
+  }
+
+  #consent-card li {
+    font-size: 12px;
+    line-height: 1.7;
+    color: rgba(255,255,255,0.7);
+    padding-left: 16px;
+    position: relative;
+    margin-bottom: 8px;
+  }
+  #consent-card li::before {
+    content: '·';
+    position: absolute;
+    left: 4px;
+    color: rgba(255,255,255,0.5);
+  }
+
+  #consent-check-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 12px;
+    line-height: 1.6;
+    color: rgba(255,255,255,0.85);
+    margin-bottom: 20px;
+    cursor: pointer;
+  }
+  #consent-check-row input { margin-top: 3px; }
+
+  #consent-start {
+    background: none;
+    border: 1px solid rgba(255,255,255,0.6);
+    color: white;
+    font-family: 'Georgia', serif;
+    font-size: 14px;
+    letter-spacing: 0.1em;
+    padding: 12px 32px;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.3s;
+  }
+  #consent-start:hover:enabled { background: rgba(255,255,255,0.1); }
+  #consent-start:disabled { opacity: 0.3; cursor: default; }
+
+  #consent-status {
+    margin-top: 14px;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: rgba(255, 170, 170, 0.9);
+    line-height: 1.6;
+  }
+
   #loading {
     position: absolute;
     inset: 0;
@@ -196,6 +375,8 @@
     justify-content: center;
     gap: 20px;
     z-index: 20;
+    padding: 24px;
+    text-align: center;
   }
 
   #loading-title {
@@ -209,6 +390,20 @@
     font-size: 11px;
     letter-spacing: 0.1em;
     color: rgba(255,255,255,0.3);
+    line-height: 1.6;
+    max-width: 420px;
+  }
+
+  #loading-reload {
+    background: none;
+    border: 1px solid rgba(255,255,255,0.5);
+    color: rgba(255,255,255,0.85);
+    font-family: 'Georgia', serif;
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    padding: 10px 24px;
+    border-radius: 2px;
+    cursor: pointer;
   }
 
   .dot-anim {
@@ -235,6 +430,7 @@
   <div id="loading-title">Avatar AR</div>
   <div class="dot-anim"><span></span><span></span><span></span></div>
   <div id="loading-sub">loading pose detection</div>
+  <button type="button" id="loading-reload" hidden>Reload</button>
 </div>
 
 <div id="container">
@@ -250,13 +446,20 @@
       <button type="button" class="av-btn" data-av="3">IV</button>
     </div>
     <div style="display:flex;align-items:center;gap:16px;">
-      <button type="button" id="camera-toggle" style="background:none;border:1px solid rgba(255,255,255,0.4);color:rgba(255,255,255,0.7);font-family:Georgia,serif;font-size:10px;letter-spacing:0.12em;padding:6px 14px;border-radius:2px;cursor:pointer;text-transform:uppercase;">camera</button>
-      <button type="button" id="rec-btn" style="display:none;background:none;border:1px solid rgba(255,255,255,0.4);color:rgba(255,255,255,0.7);font-family:Georgia,serif;font-size:10px;letter-spacing:0.12em;padding:6px 14px;border-radius:2px;cursor:pointer;text-transform:uppercase;">rec</button>
+      <button type="button" id="camera-toggle" class="bar-btn">camera</button>
+      <button type="button" id="rec-btn" class="bar-btn" style="display:none;">rec</button>
       <div id="opacity-control">
         <span id="opacity-label">opacity</span>
         <input type="range" id="opacity-slider" min="10" max="100" value="75">
       </div>
     </div>
+  </div>
+
+  <div id="hint" hidden></div>
+
+  <div id="error-banner" hidden>
+    <span id="error-text"></span>
+    <button type="button" id="error-dismiss" aria-label="Dismiss error">&times;</button>
   </div>
 
   <div id="research-panel">
@@ -266,17 +469,64 @@
     </label>
     <label>
       Condition label
-      <input id="condition-label" type="text" autocomplete="off" placeholder="Avatar I / warm-up / task A">
+      <input id="condition-label" type="text" autocomplete="off" placeholder="warm-up / task A">
     </label>
     <label>
       Session notes
       <textarea id="session-notes" placeholder="Optional notes"></textarea>
     </label>
+
+    <div class="rp-divider"></div>
+    <div class="rp-heading">Landmark logging</div>
+    <div class="rp-row">
+      <label class="rp-inline">
+        <input type="checkbox" id="landmark-toggle">
+        Log landmarks
+      </label>
+      <label class="rp-inline">
+        at
+        <select id="landmark-fps">
+          <option value="5">5</option>
+          <option value="10" selected>10</option>
+          <option value="15">15</option>
+          <option value="30">30</option>
+        </select>
+        fps
+      </label>
+    </div>
+
+    <div class="rp-divider"></div>
+    <div class="rp-heading">Condition sequence</div>
+    <div class="rp-row">
+      <select id="seq-mode">
+        <option value="manual">manual order</option>
+        <option value="random">randomised order</option>
+      </select>
+      <button type="button" id="seq-start" class="rp-btn">start</button>
+      <button type="button" id="seq-next" class="rp-btn" hidden>next</button>
+      <button type="button" id="seq-stop" class="rp-btn" hidden>end</button>
+    </div>
+    <div id="seq-status" hidden></div>
   </div>
 
-  <div id="ui">
-    <div id="status">tap to start camera</div>
-    <button type="button" id="start-btn">Start</button>
+  <div id="consent">
+    <div id="consent-card">
+      <h1>Avatar AR · research prototype v0.2</h1>
+      <p>This tool uses your device camera to track body movement and draw an avatar over it, entirely in your browser.</p>
+      <ul>
+        <li><strong>What is captured:</strong> the camera image is used locally for pose tracking. If you press <em>rec</em>, the recording contains the avatar rendering only, never the camera image. Optional landmark logging saves body joint coordinates as numbers, not images.</li>
+        <li><strong>Nothing is uploaded:</strong> there is no server. Camera footage, landmark data and metadata never leave this device through this tool.</li>
+        <li><strong>Local downloads:</strong> when a recording stops, the video file, a metadata JSON file and, if enabled, a landmark JSON file are downloaded to this device.</li>
+        <li><strong>Session fields:</strong> participant ID, condition label and session notes are saved only into the downloaded metadata files. Leave them blank if you prefer.</li>
+        <li><strong>You can stop at any time</strong> by closing this page. Downloaded files stay on your device and can be deleted by you.</li>
+      </ul>
+      <label id="consent-check-row">
+        <input type="checkbox" id="consent-checkbox">
+        <span>I have read the above and consent to camera use and local data capture for this session.</span>
+      </label>
+      <button type="button" id="consent-start" disabled>Start camera</button>
+      <div id="consent-status" hidden></div>
+    </div>
   </div>
 </div>
 
@@ -284,18 +534,37 @@
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js" crossorigin="anonymous"></script>
 
 <script>
+const SCHEMA_VERSION = '0.2.0';
+const CONSENT_STATEMENT_VERSION = '0.2';
+const MAX_LANDMARK_FRAMES = 20000;
+
 const video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
-const statusEl = document.getElementById('status');
-const startBtn = document.getElementById('start-btn');
 const loadingEl = document.getElementById('loading');
+const loadingSub = document.getElementById('loading-sub');
+const loadingReload = document.getElementById('loading-reload');
 const opacitySlider = document.getElementById('opacity-slider');
 const cameraToggle = document.getElementById('camera-toggle');
 const recBtn = document.getElementById('rec-btn');
 const participantIdInput = document.getElementById('participant-id');
 const conditionLabelInput = document.getElementById('condition-label');
 const sessionNotesInput = document.getElementById('session-notes');
+const landmarkToggle = document.getElementById('landmark-toggle');
+const landmarkFpsSelect = document.getElementById('landmark-fps');
+const seqModeSelect = document.getElementById('seq-mode');
+const seqStartBtn = document.getElementById('seq-start');
+const seqNextBtn = document.getElementById('seq-next');
+const seqStopBtn = document.getElementById('seq-stop');
+const seqStatusEl = document.getElementById('seq-status');
+const consentEl = document.getElementById('consent');
+const consentCheckbox = document.getElementById('consent-checkbox');
+const consentStartBtn = document.getElementById('consent-start');
+const consentStatusEl = document.getElementById('consent-status');
+const hintEl = document.getElementById('hint');
+const errorBanner = document.getElementById('error-banner');
+const errorText = document.getElementById('error-text');
+const errorDismiss = document.getElementById('error-dismiss');
 
 const AVATARS = [
   { id:'default', label:'I',   headScale:1.0,  torsoRxScale:1.0,  torsoRyScale:1.0,  armScale:1.0,  legScale:1.0,  armLen:1.0, legLen:1.0, wobble:0.18, headWobble:0.10, asymL:1.0,  asymR:1.0,  asymLLen:1.0, asymRLen:1.0, fill:'rgba(230, 225, 215, 0.92)', stroke:'rgba(20, 20, 20, 0.9)' },
@@ -309,16 +578,54 @@ let avatarOpacity = 0.75;
 let poseResults = null;
 let animFrame = 0;
 let cameraVisible = true;
+let sessionStarted = false;
+let sessionStartedAt = null;
+let consentGivenAt = null;
 let mediaRecorder = null;
 let recordChunks = [];
 let activeSessionId = null;
 let recordingStartedAt = null;
 let recordingMimeType = null;
+let recordingError = null;
+let lastPoseAt = 0;
 let researchSession = {
   participantId: '',
   conditionLabel: '',
   sessionNotes: ''
 };
+
+// Landmark logging state. Settings are snapshotted when a recording starts
+// so a log file always has one consistent sampling rate.
+let landmarkLog = null;
+
+// Condition sequencing state.
+let sequence = {
+  active: false,
+  mode: null,
+  order: [],
+  position: -1,
+  startedAt: null,
+  endedAt: null,
+  completed: false
+};
+
+// Every avatar condition period in the session, with start/end timestamps.
+let conditionEvents = [];
+
+// ── errors and hints ──
+function showError(msg) {
+  errorText.textContent = msg;
+  errorBanner.hidden = false;
+}
+errorDismiss.addEventListener('click', () => { errorBanner.hidden = true; });
+
+function showHint(msg) {
+  hintEl.textContent = msg;
+  hintEl.hidden = false;
+}
+function hideHint() {
+  hintEl.hidden = true;
+}
 
 opacitySlider.addEventListener('input', () => {
   avatarOpacity = opacitySlider.value / 100;
@@ -409,9 +716,6 @@ function organicLimb(ctx, x1, y1, x2, y2, r1, r2) {
 
 // ── main avatar draw ──
 function drawAvatar(landmarks) {
-  const W = canvas.width;
-  const H = canvas.height;
-
   // key points
   const nose    = lm(landmarks, 0);
   const lSho    = lm(landmarks, 11);
@@ -526,6 +830,114 @@ function render() {
 }
 render();
 
+// ── condition tracking ──
+function recordConditionChange(source) {
+  if (!sessionStarted) return;
+  const now = new Date().toISOString();
+  const last = conditionEvents[conditionEvents.length - 1];
+  if (last && !last.endedAt) {
+    if (last.avatarIndex === currentAvatar) return;
+    last.endedAt = now;
+  }
+  const avatar = AVATARS[currentAvatar];
+  conditionEvents.push({
+    avatarIndex: currentAvatar,
+    avatarId: avatar.id,
+    avatarLabel: avatar.label,
+    source,
+    startedAt: now,
+    endedAt: null
+  });
+}
+
+function setAvatar(index, source) {
+  currentAvatar = index;
+  document.querySelectorAll('.av-btn').forEach(b => {
+    b.classList.toggle('active', parseInt(b.dataset.av) === index);
+  });
+  recordConditionChange(source);
+}
+
+// ── condition sequencing ──
+function shuffled(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function updateSequenceUi() {
+  if (!sequence.active && !sequence.completed) {
+    seqStatusEl.hidden = true;
+    seqStartBtn.hidden = false;
+    seqNextBtn.hidden = true;
+    seqStopBtn.hidden = true;
+    seqModeSelect.disabled = false;
+    return;
+  }
+  seqStartBtn.hidden = true;
+  seqModeSelect.disabled = true;
+  seqStatusEl.hidden = false;
+  if (sequence.completed) {
+    const orderLabels = sequence.order.map(i => AVATARS[i].label).join(' → ');
+    seqStatusEl.textContent = `sequence complete (${orderLabels})`;
+    seqNextBtn.hidden = true;
+    seqStopBtn.hidden = false;
+    seqStopBtn.textContent = 'reset';
+    return;
+  }
+  const pos = sequence.position;
+  const total = sequence.order.length;
+  const current = AVATARS[sequence.order[pos]].label;
+  const remaining = total - pos - 1;
+  const next = remaining > 0 ? AVATARS[sequence.order[pos + 1]].label : 'none (last)';
+  seqStatusEl.textContent = `condition ${pos + 1} of ${total} · current ${current} · next ${next} · ${remaining} remaining`;
+  seqNextBtn.hidden = false;
+  seqNextBtn.textContent = remaining > 0 ? 'next' : 'finish';
+  seqStopBtn.hidden = false;
+  seqStopBtn.textContent = 'end';
+}
+
+seqStartBtn.addEventListener('click', () => {
+  const base = [0, 1, 2, 3];
+  sequence = {
+    active: true,
+    mode: seqModeSelect.value === 'random' ? 'randomised' : 'manual',
+    order: seqModeSelect.value === 'random' ? shuffled(base) : base,
+    position: 0,
+    startedAt: new Date().toISOString(),
+    endedAt: null,
+    completed: false
+  };
+  setAvatar(sequence.order[0], 'sequence');
+  updateSequenceUi();
+});
+
+seqNextBtn.addEventListener('click', () => {
+  if (!sequence.active) return;
+  if (sequence.position >= sequence.order.length - 1) {
+    sequence.active = false;
+    sequence.completed = true;
+    sequence.endedAt = new Date().toISOString();
+    recordConditionChange('sequence-complete');
+  } else {
+    sequence.position++;
+    setAvatar(sequence.order[sequence.position], 'sequence');
+  }
+  updateSequenceUi();
+});
+
+seqStopBtn.addEventListener('click', () => {
+  if (sequence.active) {
+    sequence.active = false;
+    sequence.endedAt = new Date().toISOString();
+  }
+  sequence.completed = false;
+  updateSequenceUi();
+});
+
 // ── pose setup ──
 function initPose() {
   const pose = new Pose({
@@ -542,9 +954,70 @@ function initPose() {
 
   pose.onResults((results) => {
     poseResults = results;
+    if (results.poseLandmarks) {
+      lastPoseAt = performance.now();
+      maybeLogLandmarks(results.poseLandmarks);
+    }
   });
 
   return pose;
+}
+
+// No-pose watchdog: warn when the camera runs but no body is detected.
+setInterval(() => {
+  if (!sessionStarted) return;
+  if (performance.now() - lastPoseAt > 4000) {
+    showHint('no pose detected — step back so your whole body is in frame, with enough light');
+  } else if (!hintEl.hidden && hintEl.textContent.startsWith('no pose')) {
+    hideHint();
+  }
+}, 1000);
+
+// ── landmark logging ──
+function round4(v) {
+  return typeof v === 'number' ? Math.round(v * 10000) / 10000 : null;
+}
+
+function maybeLogLandmarks(landmarks) {
+  if (!landmarkLog || !landmarkLog.active) return;
+  const now = performance.now();
+  if (now - landmarkLog.lastSampleAt < landmarkLog.intervalMs - 1) return;
+  if (landmarkLog.frames.length >= MAX_LANDMARK_FRAMES) {
+    if (!landmarkLog.truncated) {
+      landmarkLog.truncated = true;
+      showHint(`landmark log reached its ${MAX_LANDMARK_FRAMES}-frame limit — logging stopped for this recording`);
+    }
+    return;
+  }
+  landmarkLog.lastSampleAt = now;
+  const avatar = AVATARS[currentAvatar];
+  landmarkLog.frames.push({
+    t: Math.round(now - landmarkLog.t0),
+    avatarIndex: currentAvatar,
+    avatarId: avatar.id,
+    conditionLabel: researchSession.conditionLabel,
+    opacity: Math.round(avatarOpacity * 100) / 100,
+    cameraVisible,
+    landmarks: landmarks.map(l => [round4(l.x), round4(l.y), round4(l.z), round4(l.visibility)])
+  });
+}
+
+function buildLandmarkExport(endedAt) {
+  return {
+    tool: 'Avatar AR',
+    schemaVersion: SCHEMA_VERSION,
+    kind: 'landmark-log',
+    sessionId: activeSessionId,
+    participantId: researchSession.participantId,
+    samplingFps: landmarkLog.samplingFps,
+    maxFrames: MAX_LANDMARK_FRAMES,
+    truncated: landmarkLog.truncated,
+    frameCount: landmarkLog.frames.length,
+    startedAt: recordingStartedAt ? recordingStartedAt.toISOString() : null,
+    endedAt: endedAt.toISOString(),
+    landmarkFormat: 'MediaPipe Pose, 33 landmarks per frame, each landmark is [x, y, z, visibility] with x/y normalised to the video frame',
+    frames: landmarkLog.frames
+  };
 }
 
 // Prefer WebM, fall back to MP4 for browsers without WebM recording (e.g. Safari).
@@ -576,16 +1049,23 @@ function downloadJson(data, filename) {
   URL.revokeObjectURL(url);
 }
 
-function buildMetadata(endedAt, videoFilename) {
+function buildMetadata(endedAt, videoFilename, landmarkFilename) {
   const avatar = AVATARS[currentAvatar];
   return {
     tool: 'Avatar AR',
-    schemaVersion: '0.1.0',
+    schemaVersion: SCHEMA_VERSION,
+    kind: 'recording-metadata',
     sessionId: activeSessionId,
     participantId: researchSession.participantId,
     conditionLabel: researchSession.conditionLabel,
     sessionNotes: researchSession.sessionNotes,
+    consent: {
+      given: true,
+      givenAt: consentGivenAt,
+      statementVersion: CONSENT_STATEMENT_VERSION
+    },
     timestamp: endedAt.toISOString(),
+    sessionStartedAt: sessionStartedAt,
     startedAt: recordingStartedAt ? recordingStartedAt.toISOString() : null,
     endedAt: endedAt.toISOString(),
     durationMs: recordingStartedAt ? endedAt.getTime() - recordingStartedAt.getTime() : null,
@@ -593,6 +1073,33 @@ function buildMetadata(endedAt, videoFilename) {
     selectedAvatar: { ...avatar },
     opacity: avatarOpacity,
     cameraVisible,
+    conditionSequence: {
+      mode: sequence.mode,
+      order: sequence.order.map(i => AVATARS[i].label),
+      position: sequence.position,
+      active: sequence.active,
+      completed: sequence.completed,
+      startedAt: sequence.startedAt,
+      endedAt: sequence.endedAt
+    },
+    conditionEvents: conditionEvents.map(e => ({ ...e })),
+    landmarkLogging: {
+      enabled: !!(landmarkLog && landmarkLog.active),
+      samplingFps: landmarkLog && landmarkLog.active ? landmarkLog.samplingFps : null,
+      frameCount: landmarkLog && landmarkLog.active ? landmarkLog.frames.length : 0,
+      truncated: !!(landmarkLog && landmarkLog.truncated),
+      maxFrames: MAX_LANDMARK_FRAMES,
+      filename: landmarkFilename
+    },
+    environment: {
+      userAgent: navigator.userAgent,
+      language: navigator.language,
+      screen: {
+        width: window.screen ? window.screen.width : null,
+        height: window.screen ? window.screen.height : null,
+        pixelRatio: window.devicePixelRatio || 1
+      }
+    },
     canvas: {
       width: canvas.width,
       height: canvas.height
@@ -604,7 +1111,9 @@ function buildMetadata(endedAt, videoFilename) {
     recording: {
       videoFilename,
       mimeType: recordingMimeType || 'video/webm',
-      frameRate: 30
+      requestedFrameRate: 30,
+      status: recordingError ? 'error' : 'completed',
+      error: recordingError
     },
     poseDetection: {
       library: 'MediaPipe Pose',
@@ -617,10 +1126,41 @@ function buildMetadata(endedAt, videoFilename) {
   };
 }
 
+// ── consent gate ──
+consentCheckbox.addEventListener('change', () => {
+  consentStartBtn.disabled = !consentCheckbox.checked;
+});
+
+function showConsentStatus(msg) {
+  consentStatusEl.textContent = msg;
+  consentStatusEl.hidden = false;
+}
+
+function cameraErrorMessage(err) {
+  if (err && (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError')) {
+    return 'Camera permission was denied. Allow camera access for this page in your browser settings, then reload.';
+  }
+  if (err && (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError')) {
+    return 'No camera was found on this device.';
+  }
+  if (err && err.name === 'NotReadableError') {
+    return 'The camera is in use by another app. Close it and try again.';
+  }
+  return 'The camera could not be started. Check permissions and reload the page.';
+}
+
 // ── start camera ──
-startBtn.addEventListener('click', async () => {
-  startBtn.disabled = true;
-  statusEl.textContent = 'starting…';
+consentStartBtn.addEventListener('click', async () => {
+  if (!consentCheckbox.checked) return;
+
+  if (typeof Pose === 'undefined' || typeof Camera === 'undefined') {
+    showConsentStatus('Pose detection failed to load from the CDN. Check your internet connection and reload the page.');
+    return;
+  }
+
+  consentStartBtn.disabled = true;
+  showConsentStatus('starting camera…');
+  consentStatusEl.style.color = 'rgba(255,255,255,0.6)';
 
   try {
     const stream = await navigator.mediaDevices.getUserMedia({
@@ -641,15 +1181,25 @@ startBtn.addEventListener('click', async () => {
     });
     await camera.start();
 
+    consentGivenAt = new Date().toISOString();
+    sessionStarted = true;
+    sessionStartedAt = new Date().toISOString();
+    lastPoseAt = performance.now();
+    recordConditionChange('session-start');
+
     video.classList.add('visible');
     cameraToggle.style.color = 'rgba(255,255,255,0.7)';
-    if (pickRecordingMimeType() !== null) recBtn.style.display = '';
-    statusEl.textContent = 'move freely';
-    document.getElementById('ui').style.display = 'none';
+    if (pickRecordingMimeType() !== null) {
+      recBtn.style.display = '';
+    } else {
+      showError('Recording is not supported in this browser. The live avatar still works, but clips cannot be saved.');
+    }
+    consentEl.hidden = true;
 
   } catch (err) {
-    statusEl.textContent = 'camera error — try reloading';
-    startBtn.disabled = false;
+    consentStatusEl.style.color = 'rgba(255,170,170,0.9)';
+    showConsentStatus(cameraErrorMessage(err));
+    consentStartBtn.disabled = false;
     console.error(err);
   }
 });
@@ -662,29 +1212,50 @@ cameraToggle.addEventListener('click', () => {
 });
 
 // ── recording ──
+function setResearchInputsDisabled(disabled) {
+  landmarkToggle.disabled = disabled;
+  landmarkFpsSelect.disabled = disabled;
+}
+
 recBtn.addEventListener('click', () => {
   if (mediaRecorder && mediaRecorder.state === 'recording') {
     mediaRecorder.stop();
   } else {
     const preferredMimeType = pickRecordingMimeType();
     if (preferredMimeType === null) {
-      console.error('MediaRecorder is not supported in this browser');
+      showError('Recording is not supported in this browser, so no clip can be saved.');
       return;
     }
     recordChunks = [];
+    recordingError = null;
     const stream = canvas.captureStream(30);
     try {
       mediaRecorder = preferredMimeType
         ? new MediaRecorder(stream, { mimeType: preferredMimeType })
         : new MediaRecorder(stream);
     } catch (err) {
+      showError('Recording could not start in this browser. The live avatar keeps working.');
       console.error('Could not start recording', err);
       return;
     }
     activeSessionId = makeSessionId();
     recordingStartedAt = new Date();
     recordingMimeType = mediaRecorder.mimeType || preferredMimeType || 'video/webm';
+    landmarkLog = {
+      active: landmarkToggle.checked,
+      samplingFps: parseInt(landmarkFpsSelect.value, 10),
+      intervalMs: 1000 / parseInt(landmarkFpsSelect.value, 10),
+      t0: performance.now(),
+      lastSampleAt: -Infinity,
+      frames: [],
+      truncated: false
+    };
+    setResearchInputsDisabled(true);
     mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordChunks.push(e.data); };
+    mediaRecorder.onerror = e => {
+      recordingError = (e.error && e.error.message) || 'MediaRecorder error';
+      showError('Recording ran into an error. The files exported may be incomplete.');
+    };
     mediaRecorder.onstop = () => {
       const blob = new Blob(recordChunks, { type: recordingMimeType });
       const url = URL.createObjectURL(blob);
@@ -697,10 +1268,17 @@ recBtn.addEventListener('click', () => {
       a.href = url;
       a.click();
       URL.revokeObjectURL(url);
-      downloadJson(buildMetadata(endedAt, videoFilename), `${baseName}.metadata.json`);
+      let landmarkFilename = null;
+      if (landmarkLog && landmarkLog.active) {
+        landmarkFilename = `${baseName}.landmarks.json`;
+        downloadJson(buildLandmarkExport(endedAt), landmarkFilename);
+      }
+      downloadJson(buildMetadata(endedAt, videoFilename, landmarkFilename), `${baseName}.metadata.json`);
       activeSessionId = null;
       recordingStartedAt = null;
       recordingMimeType = null;
+      landmarkLog = null;
+      setResearchInputsDisabled(false);
       recBtn.textContent = 'rec';
       recBtn.style.color = 'rgba(255,255,255,0.7)';
       recBtn.style.borderColor = 'rgba(255,255,255,0.4)';
@@ -715,14 +1293,21 @@ recBtn.addEventListener('click', () => {
 // ── avatar switcher ──
 document.querySelectorAll('.av-btn').forEach(btn => {
   btn.addEventListener('click', () => {
-    currentAvatar = parseInt(btn.dataset.av);
-    document.querySelectorAll('.av-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
+    setAvatar(parseInt(btn.dataset.av), 'manual');
   });
 });
 
-// ── hide loading once scripts ready ──
+// ── hide loading once scripts ready, or surface a CDN load failure ──
 window.addEventListener('load', () => {
+  if (typeof Pose === 'undefined' || typeof Camera === 'undefined') {
+    loadingSub.textContent = 'pose detection failed to load from the CDN — check your internet connection and reload';
+    loadingSub.style.color = 'rgba(255,170,170,0.9)';
+    loadingReload.hidden = false;
+    loadingReload.addEventListener('click', () => window.location.reload());
+    const dots = document.querySelector('.dot-anim');
+    if (dots) dots.style.display = 'none';
+    return;
+  }
   setTimeout(() => {
     loadingEl.style.opacity = '0';
     loadingEl.style.transition = 'opacity 0.5s';

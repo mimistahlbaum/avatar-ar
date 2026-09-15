@@ -264,11 +264,20 @@
   }
   .rp-btn:disabled { opacity: 0.35; cursor: default; }
 
-  #seq-status {
+  #seq-status,
+  #hand-status {
     font-size: 10px;
     letter-spacing: 0.06em;
     color: rgba(255,255,255,0.75);
     line-height: 1.6;
+  }
+
+  .rp-note {
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    color: rgba(255,255,255,0.4);
+    line-height: 1.5;
+    text-transform: none;
   }
 
   #consent {
@@ -444,6 +453,7 @@
       <button type="button" class="av-btn" data-av="1">II</button>
       <button type="button" class="av-btn" data-av="2">III</button>
       <button type="button" class="av-btn" data-av="3">IV</button>
+      <button type="button" class="av-btn" data-av="4" id="av-btn-hand" title="Avatar V · hand-mediated (needs hand tracking)" hidden>V</button>
     </div>
     <div style="display:flex;align-items:center;gap:16px;">
       <button type="button" id="camera-toggle" class="bar-btn">camera</button>
@@ -496,7 +506,42 @@
     </div>
 
     <div class="rp-divider"></div>
+    <div class="rp-heading">Hand tracking · extended condition</div>
+    <div class="rp-row">
+      <label class="rp-inline">
+        <input type="checkbox" id="hand-toggle">
+        Hand tracking
+      </label>
+      <label class="rp-inline">
+        at
+        <select id="hand-fps">
+          <option value="10">10</option>
+          <option value="15" selected>15</option>
+          <option value="30">30</option>
+        </select>
+        fps
+      </label>
+    </div>
+    <div class="rp-row">
+      <label class="rp-inline">
+        <input type="checkbox" id="hand-debug">
+        Show hand landmarks
+      </label>
+    </div>
+    <div id="hand-status" hidden></div>
+    <div class="rp-note">Enables Avatar V. Hand landmarks are used for avatar shape and, when landmark logging is on, saved to a separate local file. Off by default.</div>
+
+    <div class="rp-divider"></div>
     <div class="rp-heading">Condition sequence</div>
+    <div class="rp-row">
+      <label class="rp-inline">
+        set
+        <select id="condition-set">
+          <option value="legacy-4" selected>Legacy I–IV</option>
+          <option value="extended-5">Extended I–V (hand)</option>
+        </select>
+      </label>
+    </div>
     <div class="rp-row">
       <select id="seq-mode">
         <option value="manual">manual order</option>
@@ -511,10 +556,11 @@
 
   <div id="consent">
     <div id="consent-card">
-      <h1>Avatar AR · research prototype v0.2</h1>
+      <h1>Avatar AR · research prototype v0.3</h1>
       <p>This tool uses your device camera to track body movement and draw an avatar over it, entirely in your browser.</p>
       <ul>
         <li><strong>What is captured:</strong> the camera image is used locally for pose tracking. If you press <em>rec</em>, the recording contains the avatar rendering only, never the camera image. Optional landmark logging saves body joint coordinates as numbers, not images.</li>
+        <li><strong>Optional hand tracking:</strong> a researcher may switch on hand tracking for the extended Avatar V condition. The camera image is then also used locally to estimate up to 21 hand and finger joint positions per hand. These are numbers, not images. They change the avatar's shape and, only if landmark logging is on, are saved into a separate local hand landmark file. Hand data is treated as sensitive movement data in the same way as body landmarks. It is not uploaded.</li>
         <li><strong>Nothing is uploaded:</strong> there is no server. Camera footage, landmark data and metadata never leave this device through this tool.</li>
         <li><strong>Local downloads:</strong> when a recording stops, the video file, a metadata JSON file and, if enabled, a landmark JSON file are downloaded to this device.</li>
         <li><strong>Session fields:</strong> participant ID, condition label and session notes are saved only into the downloaded metadata files. Leave them blank if you prefer.</li>
@@ -532,11 +578,39 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/pose.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js" crossorigin="anonymous"></script>
+<!-- MediaPipe Hands is NOT loaded here. It is fetched on demand only when hand tracking is switched on. -->
+
+<!-- Unit-testable logic kept outside the page. See tests/ and `npm test`. -->
+<script src="js/hand-features.js"></script>
+<script src="js/bloom-mapping.js"></script>
+<script src="js/condition-sets.js"></script>
+<script src="js/export-schema.js"></script>
 
 <script>
-const SCHEMA_VERSION = '0.2.0';
-const CONSENT_STATEMENT_VERSION = '0.2';
+// Hand-related modules are optional. If they fail to load, Avatar I to IV
+// and body logging keep working exactly as in v0.2.
+const HAND_MODULES_OK = typeof HandFeatures !== 'undefined' && typeof BloomMapping !== 'undefined' &&
+  typeof ConditionSets !== 'undefined' && typeof ExportSchema !== 'undefined';
+
+const SCHEMA_VERSION = HAND_MODULES_OK ? ExportSchema.SCHEMA_VERSION : '0.2.0';
+const CONSENT_STATEMENT_VERSION = '0.3';
 const MAX_LANDMARK_FRAMES = 20000;
+
+// Hand tracking configuration (MediaPipe Hands, legacy Solutions API, same
+// loading style as Pose). Loaded lazily so the default page is unchanged.
+const HAND_LIB_VERSION = '0.4.1675469240';
+const HAND_LIB_BASE = `https://cdn.jsdelivr.net/npm/@mediapipe/hands@${HAND_LIB_VERSION}/`;
+const HAND_MODEL_COMPLEXITY = 0;      // 0 = lite (mobile-friendly), 1 = full
+const HAND_MAX_HANDS = 2;
+const HAND_MIN_DETECTION_CONFIDENCE = 0.5;
+const HAND_MIN_TRACKING_CONFIDENCE = 0.5;
+const HAND_STALE_MS = 700;            // reuse a hand result for this long, then treat as "no hands"
+const HAND_BUSY_TIMEOUT_MS = 2500;    // guard against a stuck inference call
+// MediaPipe's handedness label assumes a mirrored (selfie) input. Whether the
+// raw front-camera frame matches that on a given device needs checking. The
+// label is only a fallback; pose wrist proximity is the primary rule.
+const HANDEDNESS_LABELS_MIRRORED = true;
+const HAND_AVATAR_INDEX = 4;
 
 const video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
@@ -557,6 +631,12 @@ const seqStartBtn = document.getElementById('seq-start');
 const seqNextBtn = document.getElementById('seq-next');
 const seqStopBtn = document.getElementById('seq-stop');
 const seqStatusEl = document.getElementById('seq-status');
+const conditionSetSelect = document.getElementById('condition-set');
+const handToggle = document.getElementById('hand-toggle');
+const handFpsSelect = document.getElementById('hand-fps');
+const handDebugToggle = document.getElementById('hand-debug');
+const handStatusEl = document.getElementById('hand-status');
+const handAvatarBtn = document.getElementById('av-btn-hand');
 const consentEl = document.getElementById('consent');
 const consentCheckbox = document.getElementById('consent-checkbox');
 const consentStartBtn = document.getElementById('consent-start');
@@ -572,7 +652,40 @@ const AVATARS = [
   { id:'bubble',  label:'III', headScale:4.0,  torsoRxScale:1.70, torsoRyScale:0.80, armScale:1.35, legScale:0.38, armLen:1.0, legLen:1.0, wobble:0.35, headWobble:0.30, asymL:1.0,  asymR:1.0,  asymLLen:1.0, asymRLen:1.0, fill:'rgba(245, 200, 130, 0.93)', stroke:'rgba(90, 45, 10, 0.88)' },
   { id:'split',   label:'IV',  headScale:1.0,  torsoRxScale:1.05, torsoRyScale:1.0,  armScale:1.0,  legScale:1.0,  armLen:1.0, legLen:1.0, wobble:0.20, headWobble:0.12, asymL:2.0,  asymR:0.35, asymLLen:2.2, asymRLen:0.45, fill:'rgba(225, 200, 215, 0.92)', stroke:'rgba(80, 20, 60, 0.88)' },
 ];
+// Avatar V "Bloom" is appended as index 4. Its base preset lives in
+// js/bloom-mapping.js and is deformed per frame by hand features. Indices
+// 0 to 3 are untouched.
+if (HAND_MODULES_OK) AVATARS.push(BloomMapping.BASE_PRESET);
 let currentAvatar = 0;
+
+// ── hand tracking state ──
+// Raw MediaPipe results and derived features are stored separately.
+// `latest` is reused by every render frame until a newer result arrives
+// (latest-result reuse), so hand inference never gates the body render.
+let handTracking = {
+  enabled: false,
+  loading: false,
+  instance: null,
+  targetFps: 15,
+  intervalMs: 1000 / 15,
+  lastSendAt: 0,
+  busy: false,
+  sendStartedAt: 0,
+  lastResultAt: 0,
+  latest: null,            // { raw: [{landmarks, handedness, score}], sides, derived, asymmetry, receivedAt }
+  resultCount: 0,
+  inferenceEmaMs: null,
+  debug: false,
+  error: null,
+  lastHandsSeenAt: 0
+};
+// Per-recording statistics so metadata reflects the recording, not the session.
+let handRecordingStats = null;
+// Companion hand landmark log, only when landmark logging AND hand tracking are on.
+let handLog = null;
+const handSmoother = HAND_MODULES_OK
+  ? HandFeatures.createFeatureSmoother({ alphaPresent: 0.2, alphaMissing: 0.04 })
+  : null;
 
 let avatarOpacity = 0.75;
 let poseResults = null;
@@ -598,7 +711,8 @@ let researchSession = {
 // so a log file always has one consistent sampling rate.
 let landmarkLog = null;
 
-// Condition sequencing state.
+// Condition sequencing state. `conditionSetId` is new in v0.3; the legacy
+// set reproduces the v0.2 four-condition order exactly.
 let sequence = {
   active: false,
   mode: null,
@@ -606,7 +720,8 @@ let sequence = {
   position: -1,
   startedAt: null,
   endedAt: null,
-  completed: false
+  completed: false,
+  conditionSetId: null
 };
 
 // Every avatar condition period in the session, with start/end timestamps.
@@ -715,7 +830,10 @@ function organicLimb(ctx, x1, y1, x2, y2, r1, r2) {
 }
 
 // ── main avatar draw ──
-function drawAvatar(landmarks) {
+// `cfg` defaults to the selected preset. Avatar V passes a per-frame config
+// derived from hand features. Returns the geometry used, so overlays such as
+// the Avatar V field can attach to the same points.
+function drawAvatar(landmarks, cfgOverride) {
   // key points
   const nose    = lm(landmarks, 0);
   const lSho    = lm(landmarks, 11);
@@ -732,7 +850,7 @@ function drawAvatar(landmarks) {
   const rAnk    = lm(landmarks, 28);
 
   // stretched limb endpoints
-  const cfg = AVATARS[currentAvatar];
+  const cfg = cfgOverride || AVATARS[currentAvatar];
   const aLLen = cfg.asymLLen;
   const aRLen = cfg.asymRLen;
   const alS  = cfg.armLen * aLLen;
@@ -818,14 +936,115 @@ function drawAvatar(landmarks) {
   ctx.stroke();
 
   ctx.restore();
+
+  return {
+    cfg, scale, lineW,
+    lWriS, rWriS,
+    armR2,
+    torso: { cx: tCx, cy: tCy, rx: torsoRx, ry: torsoRy },
+    head: { cx: nose.x, cy: hCy, r: headR }
+  };
+}
+
+// ── Avatar V field overlay ──
+// Radiating spokes around each wrist (width and count from finger spread,
+// rotation from wrist orientation) and a thin outer ring around torso and
+// head whose offset follows mean spread. Stroke only, no fill: a field, not
+// a costume.
+function drawBloomField(geom, field) {
+  if (!geom || !field) return;
+  const cfg = geom.cfg;
+  ctx.save();
+  ctx.strokeStyle = cfg.stroke;
+  ctx.lineCap = 'round';
+
+  const drawSpokes = (centre, side, expand) => {
+    if (!side || side.alpha <= 0.02 || side.width <= 0.005) return;
+    const r0 = geom.armR2 * expand * 1.1;
+    const len = side.width * geom.scale;
+    const n = Math.max(3, side.spokes);
+    ctx.globalAlpha = avatarOpacity * Math.min(1, side.alpha) * 0.85;
+    ctx.lineWidth = Math.max(0.75, geom.lineW * 0.6);
+    ctx.beginPath();
+    for (let i = 0; i < n; i++) {
+      // wrist angle is measured from image "up", clockwise on screen
+      const a = side.angle - Math.PI / 2 + (i / n) * Math.PI * 2 + Math.sin(animFrame * 0.02 + i) * 0.03;
+      const c = Math.cos(a), s = Math.sin(a);
+      ctx.moveTo(centre.x + c * r0, centre.y + s * r0);
+      ctx.lineTo(centre.x + c * (r0 + len), centre.y + s * (r0 + len));
+    }
+    ctx.stroke();
+  };
+  drawSpokes(geom.lWriS, field.left, cfg.asymL);
+  drawSpokes(geom.rWriS, field.right, cfg.asymR);
+
+  if (field.ring && field.ring.alpha > 0.02 && field.ring.offset > 0.005) {
+    ctx.globalAlpha = avatarOpacity * field.ring.alpha * 0.55;
+    ctx.lineWidth = Math.max(0.75, geom.lineW * 0.5);
+    const k = 1 + field.ring.offset;
+    blobPath(ctx, geom.torso.cx, geom.torso.cy, geom.torso.rx * k, geom.torso.ry * k, 10, cfg.wobble * 0.5);
+    ctx.stroke();
+    blobPath(ctx, geom.head.cx, geom.head.cy, geom.head.r * k, geom.head.r * 1.15 * k, 9, cfg.headWobble);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// ── hand debug overlay (research panel option) ──
+function drawHandDebug() {
+  const latest = handTracking.latest;
+  if (!latest || performance.now() - latest.receivedAt > HAND_STALE_MS) return;
+  const colours = { left: 'rgba(130, 205, 255, 0.95)', right: 'rgba(255, 190, 120, 0.95)', none: 'rgba(200, 200, 200, 0.8)' };
+  ctx.save();
+  ctx.lineWidth = 1.5;
+  for (const hand of latest.raw) {
+    const side = latest.sides.left === hand ? 'left' : latest.sides.right === hand ? 'right' : 'none';
+    ctx.strokeStyle = colours[side];
+    ctx.fillStyle = colours[side];
+    const pts = hand.landmarks.map(l => ({ x: l.x * canvas.width, y: l.y * canvas.height }));
+    ctx.beginPath();
+    for (const [a, b] of HandFeatures.CONNECTIONS) {
+      ctx.moveTo(pts[a].x, pts[a].y);
+      ctx.lineTo(pts[b].x, pts[b].y);
+    }
+    ctx.stroke();
+    for (const p of pts) {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  ctx.restore();
+}
+
+// Smoothed per-side features for the current render frame. Uses the latest
+// hand result while it is fresh, otherwise decays each side toward neutral.
+function currentHandFeatures() {
+  const latest = handTracking.latest;
+  const fresh = latest && performance.now() - latest.receivedAt <= HAND_STALE_MS;
+  const left = handSmoother.update('left', fresh ? latest.derived.left : null);
+  const right = handSmoother.update('right', fresh ? latest.derived.right : null);
+  return { left, right };
+}
+
+// Per-frame avatar configuration. For Avatar I to IV this is the preset
+// object itself, unchanged. For Avatar V it is the hand-driven mapping.
+function frameAvatarConfig() {
+  if (currentAvatar !== HAND_AVATAR_INDEX || !HAND_MODULES_OK) {
+    return { cfg: AVATARS[currentAvatar], field: null };
+  }
+  return BloomMapping.mapHandFeaturesToAvatar(currentHandFeatures());
 }
 
 function render() {
   animFrame++;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   if (poseResults && poseResults.poseLandmarks) {
-    drawAvatar(poseResults.poseLandmarks);
+    const frame = frameAvatarConfig();
+    const geom = drawAvatar(poseResults.poseLandmarks, frame.cfg);
+    if (frame.field) drawBloomField(geom, frame.field);
   }
+  if (handTracking.enabled && handTracking.debug) drawHandDebug();
   requestAnimationFrame(render);
 }
 render();
@@ -851,21 +1070,42 @@ function recordConditionChange(source) {
 }
 
 function setAvatar(index, source) {
+  if (!AVATARS[index]) return;
   currentAvatar = index;
   document.querySelectorAll('.av-btn').forEach(b => {
     b.classList.toggle('active', parseInt(b.dataset.av) === index);
   });
+  if (index === HAND_AVATAR_INDEX) {
+    if (handSmoother) handSmoother.reset();
+    if (!handTracking.enabled) {
+      showHint('Avatar V uses hand tracking. Turn it on in the research panel, or the avatar stays in its neutral form.');
+    }
+  } else if (!hintEl.hidden && hintEl.textContent.startsWith('Avatar V')) {
+    hideHint();
+  }
+  // The V button is shown while hand tracking is on, or while V is the
+  // active condition, so the general-user top bar stays four buttons otherwise.
+  handAvatarBtn.hidden = !handTracking.enabled && index !== HAND_AVATAR_INDEX;
   recordConditionChange(source);
 }
 
 // ── condition sequencing ──
-function shuffled(arr) {
-  const a = arr.slice();
-  for (let i = a.length - 1; i > 0; i--) {
+// Order building lives in js/condition-sets.js (unit tested). The legacy
+// set gives exactly the v0.2 behaviour: [0,1,2,3] manual, or a shuffle of it.
+function selectedConditionSet() {
+  if (!HAND_MODULES_OK) return { id: 'legacy-4', label: 'Legacy I–IV', avatarIndices: [0, 1, 2, 3], protocolVersion: '0.2', requiresHandTracking: false };
+  return ConditionSets.getConditionSet(conditionSetSelect.value);
+}
+
+function buildOrderForUi(set, modeValue) {
+  if (HAND_MODULES_OK) return ConditionSets.buildSequenceOrder(set.id, modeValue);
+  const base = set.avatarIndices.slice();
+  if (modeValue !== 'random') return base;
+  for (let i = base.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
+    [base[i], base[j]] = [base[j], base[i]];
   }
-  return a;
+  return base;
 }
 
 function updateSequenceUi() {
@@ -875,10 +1115,12 @@ function updateSequenceUi() {
     seqNextBtn.hidden = true;
     seqStopBtn.hidden = true;
     seqModeSelect.disabled = false;
+    conditionSetSelect.disabled = false;
     return;
   }
   seqStartBtn.hidden = true;
   seqModeSelect.disabled = true;
+  conditionSetSelect.disabled = true;
   seqStatusEl.hidden = false;
   if (sequence.completed) {
     const orderLabels = sequence.order.map(i => AVATARS[i].label).join(' → ');
@@ -901,15 +1143,20 @@ function updateSequenceUi() {
 }
 
 seqStartBtn.addEventListener('click', () => {
-  const base = [0, 1, 2, 3];
+  const set = selectedConditionSet();
+  if (set.requiresHandTracking && !handTracking.enabled) {
+    showError('The extended I–V set needs hand tracking. Turn on hand tracking in the research panel first, or choose Legacy I–IV.');
+    return;
+  }
   sequence = {
     active: true,
     mode: seqModeSelect.value === 'random' ? 'randomised' : 'manual',
-    order: seqModeSelect.value === 'random' ? shuffled(base) : base,
+    order: buildOrderForUi(set, seqModeSelect.value),
     position: 0,
     startedAt: new Date().toISOString(),
     endedAt: null,
-    completed: false
+    completed: false,
+    conditionSetId: set.id
   };
   setAvatar(sequence.order[0], 'sequence');
   updateSequenceUi();
@@ -964,14 +1211,205 @@ function initPose() {
 }
 
 // No-pose watchdog: warn when the camera runs but no body is detected.
+// Also: hand-tracking stuck guard and a "no hands" hint for Avatar V.
 setInterval(() => {
   if (!sessionStarted) return;
-  if (performance.now() - lastPoseAt > 4000) {
+  const now = performance.now();
+  if (now - lastPoseAt > 4000) {
     showHint('no pose detected — step back so your whole body is in frame, with enough light');
-  } else if (!hintEl.hidden && hintEl.textContent.startsWith('no pose')) {
-    hideHint();
+    return;
+  }
+  if (!hintEl.hidden && hintEl.textContent.startsWith('no pose')) hideHint();
+
+  if (handTracking.enabled) {
+    if (handTracking.busy && now - handTracking.sendStartedAt > HAND_BUSY_TIMEOUT_MS) {
+      handTracking.busy = false; // let the next frame retry
+    }
+    if (currentAvatar === HAND_AVATAR_INDEX && handTracking.resultCount > 0 && now - handTracking.lastHandsSeenAt > 3000) {
+      if (hintEl.hidden) showHint('body detected, no hands detected — keep hands in frame and facing the camera');
+    } else if (!hintEl.hidden && hintEl.textContent.startsWith('body detected, no hands')) {
+      hideHint();
+    }
   }
 }, 1000);
+
+// ── hand tracking runtime ──
+// Scheduling: Pose runs on every camera frame as before. Hands runs at a
+// lower target rate, is never awaited by the pose chain, and at most one hand
+// inference is in flight. Render frames reuse the latest hand result.
+// A Web Worker was considered and not used: the legacy MediaPipe Solutions
+// build needs the DOM/WebGL context. Moving to MediaPipe Tasks Vision would
+// make a Worker possible and is noted in the README.
+function updateHandStatus(text) {
+  if (text === null) {
+    handStatusEl.hidden = true;
+    return;
+  }
+  handStatusEl.textContent = text;
+  handStatusEl.hidden = false;
+}
+
+function loadHandsLibrary() {
+  if (typeof Hands !== 'undefined') return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = `${HAND_LIB_BASE}hands.js`;
+    s.crossOrigin = 'anonymous';
+    s.onload = () => (typeof Hands !== 'undefined' ? resolve() : reject(new Error('Hands global missing after load')));
+    s.onerror = () => reject(new Error('Failed to load MediaPipe Hands'));
+    document.head.appendChild(s);
+  });
+}
+
+function initHands() {
+  const hands = new Hands({ locateFile: (file) => `${HAND_LIB_BASE}${file}` });
+  hands.setOptions({
+    maxNumHands: HAND_MAX_HANDS,
+    modelComplexity: HAND_MODEL_COMPLEXITY,
+    minDetectionConfidence: HAND_MIN_DETECTION_CONFIDENCE,
+    minTrackingConfidence: HAND_MIN_TRACKING_CONFIDENCE
+  });
+  hands.onResults(handleHandResults);
+  return hands;
+}
+
+function poseWristsForAssignment() {
+  const lms = poseResults && poseResults.poseLandmarks;
+  if (!lms || !lms[15] || !lms[16]) return null;
+  return {
+    left: { x: lms[15].x, y: lms[15].y, visibility: lms[15].visibility },
+    right: { x: lms[16].x, y: lms[16].y, visibility: lms[16].visibility }
+  };
+}
+
+function handleHandResults(results) {
+  const now = performance.now();
+  const h = handTracking;
+  h.busy = false;
+  const inferenceMs = now - h.sendStartedAt;
+  h.inferenceEmaMs = h.inferenceEmaMs === null ? inferenceMs : h.inferenceEmaMs * 0.9 + inferenceMs * 0.1;
+  h.lastResultAt = now;
+  h.resultCount++;
+  if (handRecordingStats) {
+    handRecordingStats.resultCount++;
+    handRecordingStats.inferenceSumMs += inferenceMs;
+  }
+
+  const aspect = video.videoWidth && video.videoHeight ? video.videoWidth / video.videoHeight : 4 / 3;
+  const raw = (results.multiHandLandmarks || []).map((landmarks, i) => {
+    const hd = results.multiHandedness && results.multiHandedness[i];
+    return { landmarks, handedness: hd ? hd.label : null, score: hd ? hd.score : null, method: null };
+  });
+  const sides = HandFeatures.assignHandSides(raw, poseWristsForAssignment(), { labelsMirrored: HANDEDNESS_LABELS_MIRRORED, aspect });
+  for (const a of sides.assignments) {
+    const hand = sides[a.side];
+    if (hand) hand.method = a.method;
+  }
+  const derived = {
+    left: sides.left ? HandFeatures.deriveHandFeatures(sides.left.landmarks, { aspect }) : null,
+    right: sides.right ? HandFeatures.deriveHandFeatures(sides.right.landmarks, { aspect }) : null
+  };
+  derived.asymmetry = HandFeatures.computeAsymmetry(derived.left, derived.right);
+  if (raw.length > 0) h.lastHandsSeenAt = now;
+
+  h.latest = { raw, sides, derived, receivedAt: now };
+  maybeLogHands(now);
+}
+
+function maybeSendHands() {
+  const h = handTracking;
+  if (!h.enabled || !h.instance || h.busy) return;
+  const now = performance.now();
+  if (now - h.lastSendAt < h.intervalMs - 1) return;
+  h.lastSendAt = now;
+  h.sendStartedAt = now;
+  h.busy = true;
+  let p;
+  try {
+    p = h.instance.send({ image: video });
+  } catch (err) {
+    h.busy = false;
+    handleHandError(err);
+    return;
+  }
+  if (p && typeof p.then === 'function') {
+    p.then(() => { h.busy = false; }, (err) => { h.busy = false; handleHandError(err); });
+  }
+}
+
+function handleHandError(err) {
+  console.error('Hand tracking error', err);
+  if (handTracking.error) return;
+  handTracking.error = (err && err.message) || 'hand tracking error';
+  showError('Hand tracking ran into an error. Body tracking continues. Try switching hand tracking off and on again.');
+  updateHandStatus(`hand tracking error · ${handTracking.error}`);
+}
+
+function setHandFps(fps) {
+  handTracking.targetFps = fps;
+  handTracking.intervalMs = 1000 / fps;
+}
+
+async function setHandTracking(on) {
+  const h = handTracking;
+  if (on) {
+    if (h.enabled || h.loading) return;
+    if (!HAND_MODULES_OK) {
+      handToggle.checked = false;
+      showError('Hand tracking modules did not load (js/ folder). Avatar I to IV still work.');
+      return;
+    }
+    h.loading = true;
+    h.error = null;
+    handToggle.disabled = true;
+    updateHandStatus('loading hand tracking…');
+    try {
+      await loadHandsLibrary();
+      if (!h.instance) h.instance = initHands();
+      h.enabled = true;
+      h.latest = null;
+      h.lastHandsSeenAt = performance.now();
+      handAvatarBtn.hidden = false;
+      updateHandStatus(`hand tracking on · target ${h.targetFps} fps · Avatar V available`);
+      if (!hintEl.hidden && hintEl.textContent.startsWith('Avatar V')) hideHint();
+    } catch (err) {
+      console.error(err);
+      handToggle.checked = false;
+      updateHandStatus('hand tracking failed to load from the CDN');
+      showError('Hand tracking could not be loaded from the CDN. Check the connection and try again. Body tracking is unaffected.');
+    } finally {
+      h.loading = false;
+      handToggle.disabled = !!(mediaRecorder && mediaRecorder.state === 'recording');
+    }
+  } else {
+    h.enabled = false;
+    h.latest = null;
+    if (handSmoother) handSmoother.reset();
+    // Keep the V button visible while V is selected so the researcher can
+    // see which condition is active; hide it otherwise.
+    handAvatarBtn.hidden = currentAvatar !== HAND_AVATAR_INDEX;
+    updateHandStatus(null);
+    if (currentAvatar === HAND_AVATAR_INDEX) {
+      showHint('Avatar V uses hand tracking. Turn it on in the research panel, or the avatar stays in its neutral form.');
+    }
+  }
+}
+
+handToggle.addEventListener('change', () => { setHandTracking(handToggle.checked); });
+handFpsSelect.addEventListener('change', () => {
+  setHandFps(parseInt(handFpsSelect.value, 10));
+  if (handTracking.enabled) updateHandStatus(`hand tracking on · target ${handTracking.targetFps} fps · Avatar V available`);
+});
+handDebugToggle.addEventListener('change', () => { handTracking.debug = handDebugToggle.checked; });
+conditionSetSelect.addEventListener('change', () => {
+  const set = selectedConditionSet();
+  if (set.requiresHandTracking && !handTracking.enabled && !handToggle.checked) {
+    handToggle.checked = true;
+    setHandTracking(true);
+    showHint('Extended I–V selected: hand tracking switched on');
+    setTimeout(() => { if (hintEl.textContent.startsWith('Extended')) hideHint(); }, 4000);
+  }
+});
 
 // ── landmark logging ──
 function round4(v) {
@@ -1000,6 +1438,65 @@ function maybeLogLandmarks(landmarks) {
     cameraVisible,
     landmarks: landmarks.map(l => [round4(l.x), round4(l.y), round4(l.z), round4(l.visibility)])
   });
+}
+
+// ── hand landmark logging (companion file, v0.3) ──
+// Runs only when landmark logging is active AND hand tracking is on. Frames
+// are added when a new hand result arrives, at most at the body log rate, so
+// the body log's size and shape are unchanged. A result with zero hands is
+// still logged (small frame) so "body detected, hands not detected" moments
+// remain visible in the data.
+function maybeLogHands(now) {
+  if (!handLog || !landmarkLog || !landmarkLog.active) return;
+  if (now - handLog.lastSampleAt < landmarkLog.intervalMs - 1) return;
+  if (handLog.frames.length >= MAX_LANDMARK_FRAMES) {
+    handLog.truncated = true;
+    return;
+  }
+  const latest = handTracking.latest;
+  if (!latest) return;
+  handLog.lastSampleAt = now;
+  const avatar = AVATARS[currentAvatar];
+  handLog.frames.push(ExportSchema.buildHandFrame(
+    now - landmarkLog.t0,
+    { avatarIndex: currentAvatar, avatarId: avatar.id, conditionLabel: researchSession.conditionLabel },
+    latest.sides,
+    latest.derived
+  ));
+}
+
+function buildHandLandmarkExport(endedAt, bodyLandmarkFilename) {
+  return ExportSchema.buildHandLandmarkExport({
+    sessionId: activeSessionId,
+    participantId: researchSession.participantId,
+    bodyLandmarkFilename,
+    samplingFps: landmarkLog.samplingFps,
+    handTargetFps: handTracking.targetFps,
+    maxFrames: MAX_LANDMARK_FRAMES,
+    truncated: handLog.truncated,
+    startedAt: recordingStartedAt ? recordingStartedAt.toISOString() : null,
+    endedAt: endedAt.toISOString(),
+    calibration: HandFeatures.CALIBRATION
+  }, handLog.frames);
+}
+
+function handTrackingMetadataState() {
+  const stats = handRecordingStats;
+  const durationS = stats && recordingStartedAt ? (Date.now() - recordingStartedAt.getTime()) / 1000 : 0;
+  return {
+    enabled: !!(stats && stats.enabled),
+    libraryVersion: HAND_LIB_VERSION,
+    modelComplexity: HAND_MODEL_COMPLEXITY,
+    maxNumHands: HAND_MAX_HANDS,
+    minDetectionConfidence: HAND_MIN_DETECTION_CONFIDENCE,
+    minTrackingConfidence: HAND_MIN_TRACKING_CONFIDENCE,
+    targetFps: stats ? stats.targetFps : handTracking.targetFps,
+    measuredFps: stats && durationS > 0 ? stats.resultCount / durationS : null,
+    meanInferenceMs: stats && stats.resultCount > 0 ? stats.inferenceSumMs / stats.resultCount : null,
+    resultCount: stats ? stats.resultCount : 0,
+    debugVisualization: stats ? stats.debug : false,
+    labelsMirroredAssumption: HANDEDNESS_LABELS_MIRRORED
+  };
 }
 
 function buildLandmarkExport(endedAt) {
@@ -1039,8 +1536,11 @@ function makeSessionId() {
   return `session-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-function downloadJson(data, filename) {
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+// `compact` writes single-line JSON. Used for the hand landmark companion
+// file, which carries up to 42 landmarks per frame, to keep its size down.
+// Body landmark and metadata files keep their v0.2 pretty-printed layout.
+function downloadJson(data, filename, compact) {
+  const blob = new Blob([compact ? JSON.stringify(data) : JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.download = filename;
@@ -1049,7 +1549,19 @@ function downloadJson(data, filename) {
   URL.revokeObjectURL(url);
 }
 
-function buildMetadata(endedAt, videoFilename, landmarkFilename) {
+// v0.2-shaped metadata is built first, unchanged, then v0.3 fields are added
+// by ExportSchema.extendMetadata as new keys only (see tests/export-schema.test.js).
+function buildMetadata(endedAt, videoFilename, landmarkFilename, handLandmarkFilename) {
+  const base = buildLegacyMetadata(endedAt, videoFilename, landmarkFilename);
+  if (!HAND_MODULES_OK) return base;
+  return ExportSchema.extendMetadata(base, {
+    conditionSet: sequence.conditionSetId ? ConditionSets.getConditionSet(sequence.conditionSetId) : selectedConditionSet(),
+    handTracking: handTrackingMetadataState(),
+    handLandmarkFilename: handLandmarkFilename || null
+  });
+}
+
+function buildLegacyMetadata(endedAt, videoFilename, landmarkFilename) {
   const avatar = AVATARS[currentAvatar];
   return {
     tool: 'Avatar AR',
@@ -1174,7 +1686,10 @@ consentStartBtn.addEventListener('click', async () => {
 
     const camera = new Camera(video, {
       onFrame: async () => {
+        // Body pose every frame, exactly as before. Hands are dispatched
+        // afterwards without awaiting, at their own lower rate.
         await pose.send({ image: video });
+        maybeSendHands();
       },
       width: 640,
       height: 480
@@ -1215,6 +1730,9 @@ cameraToggle.addEventListener('click', () => {
 function setResearchInputsDisabled(disabled) {
   landmarkToggle.disabled = disabled;
   landmarkFpsSelect.disabled = disabled;
+  // Hand settings are also locked so one recording has one hand configuration.
+  handToggle.disabled = disabled || handTracking.loading;
+  handFpsSelect.disabled = disabled;
 }
 
 recBtn.addEventListener('click', () => {
@@ -1250,6 +1768,17 @@ recBtn.addEventListener('click', () => {
       frames: [],
       truncated: false
     };
+    // Hand companion log and per-recording statistics (v0.3, optional).
+    handRecordingStats = {
+      enabled: handTracking.enabled,
+      targetFps: handTracking.targetFps,
+      debug: handTracking.debug,
+      resultCount: 0,
+      inferenceSumMs: 0
+    };
+    handLog = HAND_MODULES_OK && handTracking.enabled && landmarkLog.active
+      ? { frames: [], truncated: false, lastSampleAt: -Infinity }
+      : null;
     setResearchInputsDisabled(true);
     mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordChunks.push(e.data); };
     mediaRecorder.onerror = e => {
@@ -1273,11 +1802,18 @@ recBtn.addEventListener('click', () => {
         landmarkFilename = `${baseName}.landmarks.json`;
         downloadJson(buildLandmarkExport(endedAt), landmarkFilename);
       }
-      downloadJson(buildMetadata(endedAt, videoFilename, landmarkFilename), `${baseName}.metadata.json`);
+      let handLandmarkFilename = null;
+      if (handLog && landmarkLog && landmarkLog.active) {
+        handLandmarkFilename = `${baseName}.hands.json`;
+        downloadJson(buildHandLandmarkExport(endedAt, landmarkFilename), handLandmarkFilename, true);
+      }
+      downloadJson(buildMetadata(endedAt, videoFilename, landmarkFilename, handLandmarkFilename), `${baseName}.metadata.json`);
       activeSessionId = null;
       recordingStartedAt = null;
       recordingMimeType = null;
       landmarkLog = null;
+      handLog = null;
+      handRecordingStats = null;
       setResearchInputsDisabled(false);
       recBtn.textContent = 'rec';
       recBtn.style.color = 'rgba(255,255,255,0.7)';

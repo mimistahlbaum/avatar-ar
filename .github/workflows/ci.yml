@@ -21,3 +21,6 @@ jobs:
 
       - name: Validate HTML
         run: html-validate avatar-ar.html index.html
+
+      - name: Unit tests (hand features, bloom mapping, condition sets, export schema)
+        run: node --test tests/*.test.js

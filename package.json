@@ -1,0 +1,10 @@
+{
+  "name": "avatar-ar",
+  "version": "0.3.0",
+  "private": true,
+  "description": "Browser-based AR avatar research prototype. No build step, no dependencies; this file only defines the test command.",
+  "scripts": {
+    "test": "node --test tests/*.test.js"
+  },
+  "license": "UNLICENSED"
+}

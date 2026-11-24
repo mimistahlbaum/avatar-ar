@@ -342,3 +342,12 @@ Suggested next steps:
 The tool runs in the browser. It does not upload camera footage, landmark data or metadata to a server. Recordings, metadata files, body landmark logs and hand landmark logs are downloaded locally by the user, and the exported video contains only the avatar rendering, never the camera image.
 
 Recorded movement data should still be treated as sensitive research material. Consent, storage and access should be managed appropriately before using this tool with participants. See [docs/research-protocol.md](docs/research-protocol.md).
+
+## Cloudflare deployment (mimiyoshii.com)
+
+The prototype is served at `https://mimiyoshii.com/research/avatar-ar/` by a Cloudflare Worker with static assets (`wrangler.jsonc`).
+
+- Deploy: `npx wrangler@latest deploy` (Wrangler 4.148.0 or later)
+- Or connect this repository to Workers Builds with the deploy command `npx wrangler deploy`
+- `.assetsignore` keeps tests, docs and config files out of the public upload
+- Status: configuration only. Deployment is pending until it is run against the Cloudflare account

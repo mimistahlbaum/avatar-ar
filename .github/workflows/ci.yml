@@ -1,9 +1,8 @@
 name: CI
 
+# Disabled to save GitHub Actions minutes. Run manually from the Actions tab if needed.
 on:
-  push:
-    branches: [main]
-  pull_request:
+  workflow_dispatch:
 
 jobs:
   validate:

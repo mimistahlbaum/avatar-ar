@@ -1,6 +1,6 @@
 # Avatar AR research protocol (v0.3)
 
-A short working protocol for using Avatar AR in practice-led research sessions. It assumes the tool is opened from GitHub Pages on a phone, tablet or laptop with a front camera.
+A short working protocol for using Avatar AR in practice-led research sessions. It assumes the tool is opened from https://mimiyoshii.com/research/avatar-ar/ on a phone, tablet or laptop with a front camera.
 
 This document supports session consistency. It does not replace ethics approval or a formal consent process for your institution.
 

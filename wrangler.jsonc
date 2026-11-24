@@ -1,0 +1,17 @@
+{
+  // Serves the static prototype at https://mimiyoshii.com/research/avatar-ar/
+  // Requires Wrangler 4.148.0 or later (assets.base_path).
+  // The mimiyoshii.com zone must be on the same Cloudflare account.
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "avatar-ar",
+  "compatibility_date": "2026-11-24",
+  "assets": {
+    "directory": ".",
+    "base_path": "/research/avatar-ar",
+    "html_handling": "auto-trailing-slash"
+  },
+  "routes": [
+    { "pattern": "mimiyoshii.com/research/avatar-ar", "zone_name": "mimiyoshii.com" },
+    { "pattern": "mimiyoshii.com/research/avatar-ar/*", "zone_name": "mimiyoshii.com" }
+  ]
+}

@@ -12,13 +12,11 @@ This tool does not score dancing. Hand and body data are used for visual transfo
 
 ## Live tool
 
-GitHub Pages:
+https://mimiyoshii.com/research/avatar-ar/
 
-https://mimistahlbaum.github.io/avatar-ar
+Direct URL to the tool page, also available:
 
-Direct file URL, also available:
-
-https://mimistahlbaum.github.io/avatar-ar/avatar-ar.html
+https://mimiyoshii.com/research/avatar-ar/avatar-ar
 
 ## What it does
 
@@ -40,7 +38,7 @@ https://mimistahlbaum.github.io/avatar-ar/avatar-ar.html
 
 ## How to use
 
-Open the GitHub Pages URL on a phone browser, Safari or Chrome. Read the consent screen, tick the consent checkbox and tap **Start camera**. The Start button stays disabled until consent is given.
+Open the live URL on a phone browser, Safari or Chrome. Read the consent screen, tick the consent checkbox and tap **Start camera**. The Start button stays disabled until consent is given.
 
 Controls in the top bar:
 
@@ -264,7 +262,7 @@ The prototype is intentionally simple:
 
 - single main HTML file with inline CSS and the page-level JavaScript
 - four small dependency-free modules in `js/` for logic that is unit tested outside the browser: `hand-features.js`, `bloom-mapping.js`, `condition-sets.js`, `export-schema.js`. Each is a plain script tag in the page and a CommonJS module in Node
-- lightweight GitHub Pages entry point
+- lightweight static entry point (`index.html`)
 - MediaPipe Pose loaded from jsDelivr CDN at page load; MediaPipe Hands loaded from jsDelivr only when hand tracking is switched on
 - Canvas 2D rendering
 - MediaRecorder for browser-based video export
@@ -273,7 +271,7 @@ The prototype is intentionally simple:
 - no server
 - no database
 
-This keeps the tool easy to deploy through GitHub Pages and easy to adapt during early research development.
+This keeps the tool easy to deploy as static files on Cloudflare and easy to adapt during early research development.
 
 If the `js/` modules fail to load, the page falls back to v0.2 behaviour: Avatar I to IV, body logging and the four-condition sequence keep working and hand tracking reports that it is unavailable.
 
@@ -322,7 +320,7 @@ Avatar AR may support questions such as:
 - The consent screen is a working prompt, not a substitute for a formal ethics-approved consent process
 - Randomised condition order uses a simple in-browser shuffle, without counterbalancing across participants
 - Browser support depends on camera permissions, MediaRecorder support and MediaPipe loading from the CDN, so the tool needs an internet connection at load time
-- The `/avatar-ar` directory URL uses a small GitHub Pages wrapper around the main `avatar-ar.html` file
+- The `/research/avatar-ar/` directory URL uses a small `index.html` wrapper that forwards to the main `avatar-ar.html` file
 - Hand feature calibration constants and the handedness mirror assumption have not yet been verified on real devices
 - Hand tracking uses the legacy MediaPipe Solutions build, which cannot run in a Web Worker. Mobile performance with Pose and Hands together is untested
 - Avatar V data is not comparable with Legacy I–IV sessions without a study design that accounts for the extra condition

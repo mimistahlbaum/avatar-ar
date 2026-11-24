@@ -8,7 +8,7 @@
   "assets": {
     "directory": ".",
     "base_path": "/research/avatar-ar",
-    "html_handling": "force-trailing-slash"
+    "html_handling": "auto-trailing-slash"
   },
   "routes": [
     { "pattern": "mimiyoshii.com/research/avatar-ar", "zone_name": "mimiyoshii.com" },

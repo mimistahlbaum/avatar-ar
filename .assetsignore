@@ -9,3 +9,4 @@ node_modules
 tests
 docs
 README.md
+.wrangler

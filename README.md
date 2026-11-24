@@ -347,7 +347,7 @@ Recorded movement data should still be treated as sensitive research material. C
 
 The prototype is served at `https://mimiyoshii.com/research/avatar-ar/` by a Cloudflare Worker with static assets (`wrangler.jsonc`).
 
-- Deploy: `npx wrangler@latest deploy` (Wrangler 4.148.0 or later)
-- Or connect this repository to Workers Builds with the deploy command `npx wrangler deploy`
+- Deploys run on Cloudflare Workers Builds (Worker `avatar-ar`), not GitHub Actions
+- Manual deploy: `npx wrangler@latest deploy` (Wrangler 4.148.0 or later)
 - `.assetsignore` keeps tests, docs and config files out of the public upload
-- Status: configuration only. Deployment is pending until it is run against the Cloudflare account
+- The build trigger currently watches the branch `claude/clever-goodall-65h973`. Switch it to `main` after merging

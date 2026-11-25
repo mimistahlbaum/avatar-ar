@@ -348,4 +348,4 @@ The prototype is served at `https://mimiyoshii.com/research/avatar-ar/` by a Clo
 - Deploys run on Cloudflare Workers Builds (Worker `avatar-ar`), not GitHub Actions
 - Manual deploy: `npx wrangler@latest deploy` (Wrangler 4.148.0 or later)
 - `.assetsignore` keeps tests, docs and config files out of the public upload
-- The build trigger currently watches the branch `claude/clever-goodall-65h973`. Switch it to `main` after merging
+- The build trigger watches the `main` branch. Pushing to `main` redeploys the site

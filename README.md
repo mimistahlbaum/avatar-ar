@@ -313,6 +313,17 @@ Avatar AR may support questions such as:
 - Can simple browser-based tools support embodied research without requiring a full XR production pipeline?
 - How might avatar transformation become a rehearsal, teaching or performance research method?
 
+### Research context and terms
+
+Avatar AR sits alongside a practice-led Honours study, *Visually Transformed Bodies in VR* (Honours in Creative Arts, Adelaide University, exegesis dated 2026-11-02). That study asked how the visual form of an avatar body shapes the generation of movement in choreographic practice. It worked with VRChat avatars in a headset, captured with OptiTrack, video and a reflective journal. It does not report on this tool, and this README makes no claim that Avatar AR reproduces or tests its findings.
+
+Two terms from that study are useful when describing Avatar AR sessions:
+
+- **Initiation**: the point in the body from which a movement is perceived to originate
+- **Texture**: the qualitative character of the movement that follows from that point
+
+Both are descriptions of what the dancer perceives, not measures the tool computes. Avatar AR does not detect or score either.
+
 ## Current limitations
 
 - Recording captures the canvas output only, so the exported video contains the avatar rendering, not the camera image
